@@ -131,6 +131,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [eventChatThreads, setEventChatThreads] = useState<EventChatThread[]>([]);
   const [activeEventChatId, setActiveEventChatId] = useState<string | null>(null);
+  const [shouldOpenMapIcebreakerComposer, setShouldOpenMapIcebreakerComposer] = useState(false);
   const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
@@ -440,6 +441,11 @@ export default function App() {
     setActiveEventChatId(nextThreadId);
   };
 
+  const openMapIcebreakerComposer = () => {
+    setCurrentScreen('map');
+    setShouldOpenMapIcebreakerComposer(true);
+  };
+
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -525,8 +531,8 @@ export default function App() {
         {currentScreen !== 'map' && <ConstellationBackground />}
 
         <AnimatePresence mode="wait">
-          {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} icebreakers={icebreakers} onDropThought={() => createIcebreaker({ latitude: 43.6629, longitude: -79.3957 })} onOpenMessages={() => setCurrentScreen('messages')} />}
-          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} onCreateIcebreaker={createIcebreaker} onJoinEventChat={handleJoinEventChat} currentUserId={sessionUserId} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
+          {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} icebreakers={icebreakers} onDropThought={openMapIcebreakerComposer} onOpenMessages={() => setCurrentScreen('messages')} />}
+          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} onCreateIcebreaker={createIcebreaker} onJoinEventChat={handleJoinEventChat} currentUserId={sessionUserId} shouldOpenIcebreakerComposer={shouldOpenMapIcebreakerComposer} onIcebreakerComposerOpened={() => setShouldOpenMapIcebreakerComposer(false)} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
           {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" eventChatThreads={eventChatThreads} activeEventChatId={activeEventChatId} />}

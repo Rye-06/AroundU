@@ -15,6 +15,7 @@ import {
   type FitnessLevel,
   type GroupPreference,
 } from '../lib/profile';
+import { AnimatedSelect } from '../components/AnimatedSelect';
 
 type EditProfileScreenProps = {
   profile: AroundUAIProfile;
@@ -305,17 +306,11 @@ function NumberSelect({
   return (
     <div>
       <label className="mb-1.5 ml-1 block text-xs font-semibold text-ink-500">{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="w-full rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-ink-700 outline-none transition-all focus:border-primary-300 focus:ring-2 focus:ring-primary-200"
-      >
-        {options.map(option => (
-          <option key={option} value={option}>
-            {format ? format(option) : option}
-          </option>
-        ))}
-      </select>
+      <AnimatedSelect
+        value={String(value)}
+        onChange={next => onChange(Number(next))}
+        options={options.map(option => ({ value: String(option), label: format ? format(option) : String(option) }))}
+      />
     </div>
   );
 }
@@ -336,17 +331,11 @@ function SelectField({
   return (
     <div>
       <label className="mb-1.5 ml-1 block text-xs font-semibold text-ink-500">{label}</label>
-      <select
+      <AnimatedSelect
         value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm capitalize text-ink-700 outline-none transition-all focus:border-primary-300 focus:ring-2 focus:ring-primary-200"
-      >
-        {options.map(option => (
-          <option key={option} value={option}>
-            {format ? format(option) : option}
-          </option>
-        ))}
-      </select>
+        onChange={onChange}
+        options={options.map(option => ({ value: option, label: format ? format(option) : option }))}
+      />
     </div>
   );
 }

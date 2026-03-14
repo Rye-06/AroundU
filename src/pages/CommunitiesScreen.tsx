@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bookmark, MessageSquare, SlidersHorizontal, UserRound } from 'lucide-react';
 import { ConstellationBackground } from '../components/ConstellationBackground';
+import { AnimatedSelect } from '../components/AnimatedSelect';
 
 const AI_MATCH_RESULT: Record<string, number> = {
   alex_rivers: 0.95,
@@ -207,51 +208,49 @@ export function CommunitiesScreen() {
             <span>Refine suggestions</span>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <select
-              value={yearFilter}
-              onChange={e => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="all">All years</option>
-              <option value={1}>Year 1</option>
-              <option value={2}>Year 2</option>
-              <option value={3}>Year 3</option>
-              <option value={4}>Year 4</option>
-            </select>
+            <AnimatedSelect
+              value={String(yearFilter)}
+              onChange={value => setYearFilter(value === 'all' ? 'all' : Number(value))}
+              options={[
+                { value: 'all', label: 'All years' },
+                { value: '1', label: 'Year 1' },
+                { value: '2', label: 'Year 2' },
+                { value: '3', label: 'Year 3' },
+                { value: '4', label: 'Year 4' },
+              ]}
+            />
 
-            <select
+            <AnimatedSelect
               value={interestFilter}
-              onChange={e => setInterestFilter(e.target.value as 'all' | string)}
-              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="all">All interests</option>
-              {allInterests.map(interest => (
-                <option key={interest} value={interest}>{prettyLabel(interest)}</option>
-              ))}
-            </select>
+              onChange={value => setInterestFilter(value as 'all' | string)}
+              options={[
+                { value: 'all', label: 'All interests' },
+                ...allInterests.map(interest => ({ value: interest, label: prettyLabel(interest) })),
+              ]}
+            />
 
-            <select
+            <AnimatedSelect
               value={groupFilter}
-              onChange={e => setGroupFilter(e.target.value as 'all' | GroupPreference)}
-              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="all">All group styles</option>
-              <option value="solo">Solo</option>
-              <option value="small_group">Small group</option>
-              <option value="medium_group">Medium group</option>
-              <option value="large_group">Large group</option>
-            </select>
+              onChange={value => setGroupFilter(value as 'all' | GroupPreference)}
+              options={[
+                { value: 'all', label: 'All group styles' },
+                { value: 'solo', label: 'Solo' },
+                { value: 'small_group', label: 'Small group' },
+                { value: 'medium_group', label: 'Medium group' },
+                { value: 'large_group', label: 'Large group' },
+              ]}
+            />
 
-            <select
+            <AnimatedSelect
               value={energyFilter}
-              onChange={e => setEnergyFilter(e.target.value as 'all' | EnergyLevel)}
-              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="all">All energy levels</option>
-              <option value="low">Low</option>
-              <option value="moderate">Moderate</option>
-              <option value="high">High</option>
-            </select>
+              onChange={value => setEnergyFilter(value as 'all' | EnergyLevel)}
+              options={[
+                { value: 'all', label: 'All energy levels' },
+                { value: 'low', label: 'Low' },
+                { value: 'moderate', label: 'Moderate' },
+                { value: 'high', label: 'High' },
+              ]}
+            />
           </div>
         </section>
 

@@ -160,9 +160,6 @@ function buildEventMarkerSvg({ activityLevel, category, state, pulsePhase }) {
   const glowOpacityBase = state === MARKER_STATE_ACTIVE ? token.glow + 0.2 : state === MARKER_STATE_HOVER ? token.glow + 0.12 : token.glow;
   const glowOpacity = activityLevel === 'high' && pulsePhase ? Math.min(0.94, glowOpacityBase + 0.09) : glowOpacityBase;
   const ringOpacity = state === MARKER_STATE_ACTIVE ? token.ring + 0.2 : state === MARKER_STATE_HOVER ? token.ring + 0.1 : token.ring;
-  const strokeWidth = Math.max(1.4, coreRadius / 7.2);
-
-  const indicator = getIndicatorPath(categoryType, strokeWidth);
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 82 82">
@@ -178,19 +175,13 @@ function buildEventMarkerSvg({ activityLevel, category, state, pulsePhase }) {
       <circle cx="41" cy="41" r="${(ringRadius + 2.1).toFixed(2)}" fill="none" stroke="rgba(252,249,242,${Math.min(0.55, ringOpacity * 0.75)})" stroke-width="1.1"/>
 
       <circle cx="41" cy="41" r="${coreRadius.toFixed(2)}" fill="${color.fill}" stroke="rgba(252,249,242,0.95)" stroke-width="2"/>
-      <g>
-        ${indicator}
-      </g>
+      <circle cx="41" cy="41" r="${Math.max(2.4, coreRadius * 0.2).toFixed(2)}" fill="rgba(254,252,243,0.95)" />
     </svg>
   `;
 }
 
 function createMarkerIcon(entry) {
-  const token = ACTIVITY_TOKEN[entry.activityLevel] ?? ACTIVITY_TOKEN.moderate;
-  const interactionScale = entry.state === MARKER_STATE_ACTIVE ? 1.08 : entry.state === MARKER_STATE_HOVER ? 1.06 : 1;
-  const totalSize = entry.kind === 'icebreaker'
-    ? 62
-    : Math.min(70, Math.max(44, Math.min(token.core, 24) * interactionScale * 2.9));
+  const totalSize = 62;
 
   const svg = entry.kind === 'icebreaker'
     ? buildIcebreakerMarkerSvg({ state: entry.state })

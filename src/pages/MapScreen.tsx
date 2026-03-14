@@ -125,6 +125,8 @@ type MapScreenProps = {
     participantUserIds: string[];
   }) => void;
   currentUserId: string | null;
+  shouldOpenIcebreakerComposer?: boolean;
+  onIcebreakerComposerOpened?: () => void;
   profile: AroundUAIProfile;
   profilePhotoUrl: string;
   userEvents?: MapEvent[];
@@ -134,7 +136,7 @@ type MapScreenProps = {
 
 const CAMPUS_FALLBACK_POSITION = { lat: 43.6631, lng: -79.3958 };
 
-export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebreaker, onJoinEventChat, currentUserId, profile, profilePhotoUrl, userEvents = [], initialFocusEventId, onFocusHandled }: MapScreenProps) {
+export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebreaker, onJoinEventChat, currentUserId, shouldOpenIcebreakerComposer = false, onIcebreakerComposerOpened, profile, profilePhotoUrl, userEvents = [], initialFocusEventId, onFocusHandled }: MapScreenProps) {
   const [backendEvents, setBackendEvents] = useState<MapEvent[]>([]);
   const [userPosition, setUserPosition] = useState(CAMPUS_FALLBACK_POSITION);
   const [showIcebreakerComposer, setShowIcebreakerComposer] = useState(false);
@@ -192,6 +194,16 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebr
     [backendEvents, userEvents]
   );
   const [showFabMenu, setShowFabMenu] = useState(false);
+
+  useEffect(() => {
+    if (!shouldOpenIcebreakerComposer) {
+      return;
+    }
+
+    setShowFabMenu(false);
+    setShowIcebreakerComposer(true);
+    onIcebreakerComposerOpened?.();
+  }, [onIcebreakerComposerOpened, shouldOpenIcebreakerComposer]);
 
   const handleJoinEvent = async (event: MapEvent) => {
     if (!currentUserId) {

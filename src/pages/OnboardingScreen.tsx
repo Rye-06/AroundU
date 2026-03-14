@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Check, Plus, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ConstellationBackground } from '../components/ConstellationBackground';
+import { AnimatedSelect } from '../components/AnimatedSelect';
 import {
   ENERGY_OPTIONS,
   FITNESS_OPTIONS,
@@ -174,17 +175,11 @@ export function OnboardingScreen({ onComplete }: { onComplete: (payload: Onboard
                   <>
                     <div>
                       <label className="mb-1.5 ml-1 block text-xs font-semibold text-ink-500">Year of study</label>
-                      <select
-                        value={yearOfStudy}
-                        onChange={e => setYearOfStudy(Number(e.target.value))}
-                        className="w-full rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-ink-700 outline-none transition-all focus:border-primary-300 focus:ring-2 focus:ring-primary-200"
-                      >
-                        {YEAR_OPTIONS.map(value => (
-                          <option key={value} value={value}>
-                            Year {value}
-                          </option>
-                        ))}
-                      </select>
+                      <AnimatedSelect
+                        value={String(yearOfStudy)}
+                        onChange={value => setYearOfStudy(Number(value))}
+                        options={YEAR_OPTIONS.map(value => ({ value: String(value), label: `Year ${value}` }))}
+                      />
                     </div>
 
                     <div>
@@ -237,17 +232,11 @@ export function OnboardingScreen({ onComplete }: { onComplete: (payload: Onboard
 
                     <div>
                       <label className="mb-1.5 ml-1 block text-xs font-semibold text-ink-500">MBTI</label>
-                      <select
+                      <AnimatedSelect
                         value={mbti}
-                        onChange={e => setMbti(e.target.value)}
-                        className="w-full rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-ink-700 outline-none transition-all focus:border-primary-300 focus:ring-2 focus:ring-primary-200"
-                      >
-                        {MBTI_OPTIONS.map(option => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={setMbti}
+                        options={MBTI_OPTIONS.map(option => ({ value: option, label: option }))}
+                      />
                     </div>
                   </>
                 )}

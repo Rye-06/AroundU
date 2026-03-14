@@ -4,6 +4,7 @@ import { AlertTriangle, Check, Compass, LocateFixed, MapPin, Search, X } from 'l
 import { cn } from '../lib/utils';
 import { FieldGroup } from '../components/FieldGroup';
 import EventLocationPickerMap from '../components/map/EventLocationPickerMap';
+import { AnimatedSelect } from '../components/AnimatedSelect';
 import {
   createEvent,
   toCreateEventBody,
@@ -365,32 +366,23 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <FieldGroup label="Event type" required>
-              <select
+              <AnimatedSelect
                 value={eventType}
-                onChange={e => setEventType(e.target.value)}
-                className="w-full rounded-xl border border-surface-200 bg-white px-4 py-3.5 text-sm text-ink-800 transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
-              >
-                <option value="">Select event type</option>
-                {EVENT_TYPE_OPTIONS.map(option => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                onChange={setEventType}
+                placeholder="Select event type"
+                options={[
+                  { value: '', label: 'Select event type' },
+                  ...EVENT_TYPE_OPTIONS.map(option => ({ value: option, label: option })),
+                ]}
+              />
             </FieldGroup>
 
             <FieldGroup label="Skill level required" required>
-              <select
+              <AnimatedSelect
                 value={skillLevelRequired}
-                onChange={e => setSkillLevelRequired(e.target.value)}
-                className="w-full rounded-xl border border-surface-200 bg-white px-4 py-3.5 text-sm text-ink-800 transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
-              >
-                {SKILL_LEVEL_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setSkillLevelRequired}
+                options={SKILL_LEVEL_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+              />
             </FieldGroup>
           </div>
 

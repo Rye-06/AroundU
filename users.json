@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Alice",
+    "user_profile": {
+      "year_of_study": 1,
+      "major": "Computer Science",
+      "age": 19,
+      "gender": "female",
+      "mbti": "ENFP",
+      "mood": "energetic",
+      "fitness": "active",
+      "class": ["CSC108", "MAT137"],
+      "club": ["AI Club", "Volleyball Club"],
+      "personality": {
+        "extroversion": 3,
+        "group_preference": "medium_group",
+        "energy_level": "moderate"
+      },
+      "interests": ["volleyball", "gym", "anime"]
+    }
+  },
+  {
+    "name": "Bob",
+    "user_profile": {
+      "year_of_study": 2,
+      "major": "Computer Science",
+      "age": 20,
+      "gender": "male",
+      "mbti": "ENTP",
+      "mood": "motivated",
+      "fitness": "active",
+      "class": ["CSC207", "MAT137"],
+      "club": ["Startup Club", "Volleyball Club"],
+      "personality": {
+        "extroversion": 4,
+        "group_preference": "medium_group",
+        "energy_level": "high"
+      },
+      "interests": ["gym", "startups", "anime"]
+    }
+  }
+]

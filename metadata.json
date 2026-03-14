@@ -1,0 +1,7 @@
+{
+  "name": "CampusPulse",
+  "description": "A cozy campus companion for gentle social connection, skill sharing, and mindful community engagement.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

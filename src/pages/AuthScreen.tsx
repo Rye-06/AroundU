@@ -14,6 +14,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     onAuth();
   };
 

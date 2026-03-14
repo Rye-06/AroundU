@@ -9,7 +9,7 @@ import recommendationRoutes from './routes/recommendations.js';
 import interestRoutes from './routes/interests.js';
 
 const app: Application = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 

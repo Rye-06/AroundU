@@ -27,6 +27,7 @@ import { EventNotificationStack, type EventToast } from './components/EventNotif
 import { AroundUEmblem, AroundULogo } from './components/AroundULogo';
 import { SplashScreen } from './components/SplashScreen';
 import { ConstellationBackground } from './components/ConstellationBackground';
+import { createEvent } from './lib/api';
 
 type AppMapEvent = {
   id: string;

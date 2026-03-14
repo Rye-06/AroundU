@@ -16,5 +16,6 @@ View your app in AI Studio: https://ai.studio/apps/f1e46c9b-7121-47e2-93d3-aa99c
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+3. Set `VITE_GOOGLE_MAPS_API_KEY` in your environment file for Campus Map Google Maps rendering.
+4. Run the app:
    `npm run dev`

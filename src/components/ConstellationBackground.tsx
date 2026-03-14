@@ -96,7 +96,14 @@ export function ConstellationBackground() {
 
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      <div className="absolute top-[8%] right-[18%] h-52 w-52 rounded-full bg-primary-200/20 blur-[90px]" />
+      <div className="absolute bottom-[10%] left-[10%] h-44 w-44 rounded-full bg-coral-100/24 blur-[85px]" />
+
       <svg className="absolute w-full h-full" preserveAspectRatio="none">
+        <path d="M 78 8 A 20 20 0 0 1 96 25" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-primary-400 opacity-[0.22]" />
+        <path d="M 8 36 A 14 14 0 0 1 21 23" fill="none" stroke="currentColor" strokeWidth="0.7" className="text-primary-500 opacity-[0.2]" />
+        <path d="M 58 96 A 18 18 0 0 1 74 83" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-coral-400 opacity-[0.26]" />
+
         {/* Connecting lines within clusters */}
         {lines.map((line) => (
           <line
@@ -106,8 +113,8 @@ export function ConstellationBackground() {
             x2={`${line.x2}%`}
             y2={`${line.y2}%`}
             stroke="currentColor"
-            strokeWidth="0.8"
-            className="text-primary-500 opacity-[0.08]"
+            strokeWidth="0.7"
+            className="text-primary-500 opacity-[0.07]"
           />
         ))}
 
@@ -118,9 +125,13 @@ export function ConstellationBackground() {
             cx={`${dot.x}%`}
             cy={`${dot.y}%`}
             r={dot.r}
-            className="fill-primary-500 opacity-[0.15]"
+            className="fill-primary-500 opacity-[0.14]"
           />
         ))}
+
+        <circle cx="83%" cy="18%" r="1.6" className="fill-coral-300 opacity-[0.65]" />
+        <circle cx="14%" cy="74%" r="1.8" className="fill-coral-300 opacity-[0.55]" />
+        <circle cx="64%" cy="80%" r="1.7" className="fill-coral-200 opacity-[0.55]" />
       </svg>
     </div>
   );

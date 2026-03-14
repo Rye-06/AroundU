@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ConstellationBackground } from '../components/ConstellationBackground';
+import { AroundULogo } from '../components/AroundULogo';
 
 export function AuthScreen({ onAuth }: { onAuth: () => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
@@ -22,7 +23,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
       {/* Soft ambient glow */}
       <div className="absolute top-1/4 right-1/4 w-80 h-80 bg-primary-200/30 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/3 left-1/4 w-64 h-64 bg-coral-100/25 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-1/3 left-1/4 w-64 h-64 bg-coral-100/30 rounded-full blur-[100px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -34,8 +35,8 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
         <div className="bg-white rounded-[2.5rem] shadow-xl shadow-surface-200/40 border border-surface-100 p-10">
           {/* Logo  */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Welcome to CampusPulse</h1>
-            <p className="text-ink-500 mt-2 text-sm font-medium">Find your people, at your pace.</p>
+            <AroundULogo showTagline className="justify-center" emblemClassName="h-16 w-16" />
+            <p className="text-ink-500 mt-4 text-sm font-medium">Find your people, in real time.</p>
           </div>
 
           {/* Toggle */}

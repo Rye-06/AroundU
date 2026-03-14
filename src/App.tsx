@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Home, 
   Users, 
   MessageSquare, 
   Map as MapIcon,
   CalendarPlus,
+  BookOpen,
+  Coffee,
+  Dumbbell,
+  Utensils,
+  Music,
+  Zap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
@@ -17,11 +23,144 @@ import { CommunitiesScreen } from './pages/CommunitiesScreen';
 import { MessagesScreen } from './pages/MessagesScreen';
 import { ProfileScreen } from './pages/ProfileScreen';
 import { EditProfileScreen } from './pages/EditProfileScreen';
+import { EventNotificationStack, type EventToast } from './components/EventNotificationStack';
+import { AroundUEmblem, AroundULogo } from './components/AroundULogo';
+import { SplashScreen } from './components/SplashScreen';
+import { ConstellationBackground } from './components/ConstellationBackground';
+
+type AppMapEvent = {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  category: string;
+  host: string;
+  attendees: number;
+  maxAttendees: number;
+  timeLeft: string;
+  photo: string;
+  tags: string[];
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  top: string;
+  left: string;
+  activityLevel: 'quiet' | 'moderate' | 'high';
+  activityType: string;
+  groupSize: 'small' | 'medium' | 'large';
+};
+
+type PostedEventPayload = {
+  title: string;
+  subtitle: string;
+  description: string;
+  location?: string;
+  interestTag?: string;
+  category: string;
+};
 
 type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
+  const [showSplash, setShowSplash] = useState(true);
+  const [eventNotifications, setEventNotifications] = useState<EventToast[]>([]);
+  const [userMapEvents, setUserMapEvents] = useState<AppMapEvent[]>([]);
+  const [mapFocusEventId, setMapFocusEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const splashTimer = window.setTimeout(() => setShowSplash(false), 1700);
+    return () => window.clearTimeout(splashTimer);
+  }, []);
+
+  const buildMapEventFromPost = (post: PostedEventPayload): AppMapEvent => {
+    const categoryLabel = post.category.charAt(0).toUpperCase() + post.category.slice(1);
+
+    const iconByCategory = {
+      study: BookOpen,
+      social: Coffee,
+      sports: Dumbbell,
+      food: Utensils,
+      music: Music,
+      other: Zap,
+    } as const;
+
+    const activityByCategory = {
+      study: 'moderate',
+      social: 'quiet',
+      sports: 'high',
+      food: 'moderate',
+      music: 'moderate',
+      other: 'moderate',
+    } as const;
+
+    const groupSizeByCategory = {
+      study: 'medium',
+      social: 'small',
+      sports: 'large',
+      food: 'medium',
+      music: 'medium',
+      other: 'medium',
+    } as const;
+
+    const icon = iconByCategory[post.category as keyof typeof iconByCategory] ?? Zap;
+    const activityLevel = activityByCategory[post.category as keyof typeof activityByCategory] ?? 'moderate';
+    const groupSize = groupSizeByCategory[post.category as keyof typeof groupSizeByCategory] ?? 'medium';
+
+    const spreadIndex = userMapEvents.length;
+    const top = 30 + ((spreadIndex * 13) % 40);
+    const left = 28 + ((spreadIndex * 17) % 44);
+    const nextId = `user-event-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    return {
+      id: nextId,
+      title: post.title,
+      description: post.description,
+      location: post.location ?? 'Campus location',
+      category: categoryLabel,
+      host: 'Alex Rivers',
+      attendees: 1,
+      maxAttendees: 8,
+      timeLeft: 'Starts now',
+      photo: `https://picsum.photos/seed/${nextId}/600/400`,
+      tags: [post.interestTag ?? categoryLabel],
+      icon,
+      top: `${top}%`,
+      left: `${left}%`,
+      activityLevel,
+      activityType: post.category,
+      groupSize,
+    };
+  };
+
+  const handleEventPosted = (post: PostedEventPayload) => {
+    const mapEvent = buildMapEventFromPost(post);
+
+    const notification: EventToast = {
+      id: mapEvent.id,
+      title: post.title,
+      subtitle: post.subtitle,
+      location: post.location,
+      interestTag: post.interestTag,
+      ctaLabel: 'View',
+      durationMs: 5000,
+    };
+
+    setUserMapEvents(prev => [mapEvent, ...prev]);
+    setEventNotifications(prev => [notification, ...prev]);
+  };
+
+  const dismissNotification = (id: string) => {
+    setEventNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
+
+  const openNotification = (id: string) => {
+    setMapFocusEventId(id);
+    setCurrentScreen('map');
+    dismissNotification(id);
+  };
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   // Full-screen flows (no sidebar)
   if (currentScreen === 'auth') {
@@ -38,8 +177,12 @@ export default function App() {
       {currentScreen !== 'map' && (
         <aside className="w-20 md:w-64 bg-surface-50 border-r border-surface-200 flex flex-col h-full shrink-0">
           <div className="p-6">
-            <h1 className="text-xl font-bold text-ink-800 tracking-tight hidden md:block">CampusPulse</h1>
-            <div className="md:hidden w-8 h-8 bg-primary-400 rounded-full mx-auto" />
+            <div className="hidden md:block">
+              <AroundULogo compact showTagline />
+            </div>
+            <div className="md:hidden mx-auto w-fit">
+              <AroundUEmblem className="h-8 w-8" />
+            </div>
           </div>
           
           <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -97,15 +240,23 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 relative overflow-hidden">
+        {currentScreen !== 'map' && <ConstellationBackground />}
+
         <AnimatePresence mode="wait">
           {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} />}
-          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} />}
-          {currentScreen === 'create' && <CreateEventScreen key="create" />}
+          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
+          {currentScreen === 'create' && <CreateEventScreen key="create" onEventPosted={handleEventPosted} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" />}
           {currentScreen === 'profile' && <ProfileScreen key="profile" onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
           {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" onBack={() => setCurrentScreen('profile')} />}
         </AnimatePresence>
+
+        <EventNotificationStack
+          notifications={eventNotifications}
+          onDismiss={dismissNotification}
+          onOpen={openNotification}
+        />
       </main>
     </div>
   );

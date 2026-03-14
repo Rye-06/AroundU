@@ -4,9 +4,17 @@ import { Check, X, MapPin, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { FieldGroup } from '../components/FieldGroup';
 import { eventCategories, campusLocations, durations } from '../data/mockData';
-import { ConstellationBackground } from '../components/ConstellationBackground';
 
-export function CreateEventScreen() {
+type PostedEventPayload = {
+  title: string;
+  subtitle: string;
+  description: string;
+  location?: string;
+  interestTag?: string;
+  category: string;
+};
+
+export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: PostedEventPayload) => void }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -42,6 +50,23 @@ export function CreateEventScreen() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const categoryLabel = eventCategories.find(cat => cat.value === form.category)?.label ?? 'Event';
+    const subtitle = form.description.trim()
+      ? form.description.trim().slice(0, 90)
+      : `${categoryLabel} meetup nearby`;
+
+    onEventPosted?.({
+      title: form.title.trim(),
+      subtitle,
+      description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
+      location: form.building
+        ? `${form.building}${form.room ? ` · ${form.room}` : ''}`
+        : form.customLocation.trim() || undefined,
+      interestTag: form.tags[0],
+      category: form.category,
+    });
+
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 4000);
   }
@@ -57,12 +82,10 @@ export function CreateEventScreen() {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="h-full overflow-y-auto custom-scrollbar relative"
     >
-      <ConstellationBackground />
-
       <div className="max-w-2xl mx-auto px-8 py-12 relative z-10">
         {/* Header */}
         <div className="mb-10 block text-center sm:text-left transition-all">
-          <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Start a gathering</h2>
+          <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Start a hangout</h2>
           <p className="text-ink-500 mt-2 text-sm sm:text-base font-medium">Plan something casual and ping nearby students.</p>
         </div>
 

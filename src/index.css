@@ -1,26 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  /* Soft Sage Primary */
-  --color-primary-50: #f4f7f6;
-  --color-primary-100: #e3ebe8;
-  --color-primary-200: #c7d8d3;
-  --color-primary-400: #8eb0a6;
-  --color-primary-500: #709388;
-  --color-primary-600: #58766d;
-  --color-primary-700: #48615a;
+  /* AroundU Sage Primary */
+  --color-primary-50: #f3f5ef;
+  --color-primary-100: #e3e8db;
+  --color-primary-200: #ccd5c4;
+  --color-primary-300: #afbea8;
+  --color-primary-400: #93a88f;
+  --color-primary-500: #7b9780;
+  --color-primary-600: #647e68;
+  --color-primary-700: #4f6752;
 
-  /* Soft Lavender Accent (mapped to existing coral classes) */
-  --color-coral-50: #f6f5f9;
-  --color-coral-100: #ece9f3;
-  --color-coral-400: #a89fcd;
-  --color-coral-500: #8b80b6;
+  /* Warm Sand Accent (mapped to existing coral classes) */
+  --color-coral-50: #f9f5e8;
+  --color-coral-100: #f2ead2;
+  --color-coral-200: #e8dcb8;
+  --color-coral-300: #dccb9f;
+  --color-coral-400: #c7b583;
+  --color-coral-500: #ab9870;
 
   /* Warm Neutral Surfaces */
-  --color-surface-50: #fcfbf9;
-  --color-surface-100: #f4f3ef;
-  --color-surface-200: #e6e5e0;
-  --color-surface-300: #d6d4ce;
+  --color-surface-50: #fcf9f2;
+  --color-surface-100: #f3eee3;
+  --color-surface-200: #e7dfcf;
+  --color-surface-300: #d7ceb9;
 
   /* Calm Charcoal Ink */
   --color-ink-400: #9da3a3;

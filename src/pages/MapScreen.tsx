@@ -1,15 +1,41 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Search, Clock, Users, MessageSquare, Plus, X, Sparkles, Send, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { mapEvents, mapIcebreakers } from '../data/mockData';
 
-// Helper to parse '20%' to 20
-const getNum = (val: string) => parseFloat(val.replace('%', ''));
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
+const PIN_BASE_SIZE_BY_ACTIVITY = {
+  quiet: 14,
+  moderate: 18,
+  high: 22,
+} as const;
 
-export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: () => void, onCreateEvent: () => void, onGoToMessages: () => void }) {
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+const PIN_ICON_SIZE_BY_ACTIVITY = {
+  quiet: 8,
+  moderate: 10,
+  high: 12,
+} as const;
+
+const PIN_MAX_SIZE = 24;
+
+// Keep pin size effectively fixed while zooming; optionally tune between -2 and +2.
+const PIN_ZOOM_SIZE_OFFSET = 0;
+
+type MapEvent = (typeof mapEvents)[number];
+
+type MapScreenProps = {
+  onBack: () => void;
+  onCreateEvent: () => void;
+  onGoToMessages: () => void;
+  userEvents?: MapEvent[];
+  initialFocusEventId?: string | null;
+  onFocusHandled?: () => void;
+};
+
+export function MapScreen({ onBack, onCreateEvent, onGoToMessages, userEvents = [], initialFocusEventId, onFocusHandled }: MapScreenProps) {
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(initialFocusEventId ?? null);
   const [selectedIcebreaker, setSelectedIcebreaker] = useState<string | null>(null);
   
   const [localIcebreakers, setLocalIcebreakers] = useState(mapIcebreakers);
@@ -19,6 +45,18 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
   const [newIceText, setNewIceText] = useState('');
   const [replyText, setReplyText] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const displayedEvents = useMemo(() => [...mapEvents, ...userEvents], [userEvents]);
+
+  useEffect(() => {
+    if (!initialFocusEventId) {
+      return;
+    }
+
+    setSelectedEvent(initialFocusEventId);
+    setSelectedIcebreaker(null);
+    onFocusHandled?.();
+  }, [initialFocusEventId, onFocusHandled]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -113,7 +151,7 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
       </AnimatePresence>
 
       {/* Map Markers - Events */}
-      {mapEvents.map(event => {
+      {displayedEvents.map(event => {
         const Icon = event.icon;
         const isSelected = selectedEvent === event.id;
         
@@ -125,27 +163,22 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         
         // --- Intuitive Map Pin Logic ---
         
-        // 1. Activity Level -> Size & Glow (larger readable sizes)
-        let sizeClass = "w-[18px] h-[18px]"; // moderate
-        let iconSizeClass = "w-[10px] h-[10px]";
-        let glowClass = "shadow-[0_0_10px_rgba(112,147,136,0.2)]";
-        
-        if (event.activityLevel === 'quiet') {
-          sizeClass = "w-[14px] h-[14px]";
-          iconSizeClass = "w-[8px] h-[8px]";
-          glowClass = ""; // no glow for quiet
-        } else if (event.activityLevel === 'high') {
-          sizeClass = "w-[22px] h-[22px]";
-          iconSizeClass = "w-[12px] h-[12px]";
-          glowClass = "shadow-[0_0_12px_rgba(112,147,136,0.3)]"; // gentle halo
-        }
+        // 1. Activity Level -> Size & Glow (fixed readable sizes with hard cap)
+        const activityLevel = event.activityLevel === 'quiet' || event.activityLevel === 'high' ? event.activityLevel : 'moderate';
+        const sizePx = clamp(PIN_BASE_SIZE_BY_ACTIVITY[activityLevel] + clamp(PIN_ZOOM_SIZE_OFFSET, -2, 2), 12, PIN_MAX_SIZE);
+        const iconPx = PIN_ICON_SIZE_BY_ACTIVITY[activityLevel];
+        const glowClass = activityLevel === 'high'
+          ? "shadow-[0_0_10px_rgba(112,147,136,0.2)]"
+          : activityLevel === 'moderate'
+            ? "shadow-[0_0_8px_rgba(112,147,136,0.14)]"
+            : "";
 
         // 2. Group Size -> Ring (thinner, calmer rings)
-        let ringClass = "outline outline-1 outline-offset-2 outline-primary-300/30"; // medium ring
+        let ringClass = "outline outline-1 outline-offset-[1.5px] outline-primary-300/25";
         if (event.groupSize === 'small') {
-          ringClass = "outline outline-1 outline-offset-[2px] outline-primary-300/20"; // thin ring
+          ringClass = "outline outline-1 outline-offset-[1.5px] outline-primary-300/18";
         } else if (event.groupSize === 'large') {
-          ringClass = "outline outline-1 outline-offset-[3px] outline-dashed outline-primary-400/40"; // broken ring
+          ringClass = "outline outline-1 outline-offset-[2px] outline-dashed outline-primary-400/30";
         }
 
         return (
@@ -237,13 +270,13 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
                 className={cn(
                   "rounded-full pointer-events-auto transition-transform duration-500 flex items-center justify-center",
                   "bg-primary-500 text-white",
-                  sizeClass,
                   glowClass,
                   ringClass,
                   isSelected ? "scale-[1.08]" : "group-hover:scale-[1.06]"
                 )}
+                style={{ width: `${sizePx}px`, height: `${sizePx}px`, maxWidth: `${PIN_MAX_SIZE}px`, maxHeight: `${PIN_MAX_SIZE}px` }}
               >
-                <Icon className={cn(iconSizeClass, "opacity-90 stroke-[2.5]")} />
+                <Icon className="opacity-90 stroke-[2.5]" style={{ width: `${iconPx}px`, height: `${iconPx}px` }} />
               </div>
             </div>
           </div>

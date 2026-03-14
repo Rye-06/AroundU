@@ -99,6 +99,40 @@ export type ApiEventRecord = {
 export type CreateEventBody = Omit<ApiEventRecord, 'id' | 'created_at'>;
 export type UpdateEventBody = Partial<CreateEventBody>;
 
+export type CoordinatePoint = {
+  latitude: number;
+  longitude: number;
+};
+
+export type CreateEventSubmission = {
+  host_user_id: string;
+  title: string;
+  description: string;
+  event_type: string;
+  interest_tag: string[];
+  skill_level_required: string;
+  latitude: number;
+  longitude: number;
+  event_time: string;
+  max_participants: number;
+  creator_location: CoordinatePoint | null;
+};
+
+export function toCreateEventBody(payload: CreateEventSubmission): CreateEventBody {
+  return {
+    host_user_id: payload.host_user_id,
+    title: payload.title,
+    description: payload.description,
+    event_type: payload.event_type,
+    interest_tag: payload.interest_tag,
+    skill_level_required: payload.skill_level_required,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    event_time: payload.event_time,
+    max_participants: payload.max_participants,
+  };
+}
+
 export const getEvents = (signal?: AbortSignal) => listResource<ApiEventRecord>('events', signal);
 export const getEventById = (id: string, signal?: AbortSignal) => getResourceById<ApiEventRecord>('events', id, signal);
 export const createEvent = (body: CreateEventBody, signal?: AbortSignal) => createResource<ApiEventRecord, CreateEventBody>('events', body, signal);

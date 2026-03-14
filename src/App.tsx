@@ -29,7 +29,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { ConstellationBackground } from './components/ConstellationBackground';
 import { MoodCheckInModal } from './components/MoodCheckInModal';
 import { DEFAULT_AI_PROFILE, type AroundUAIProfile, type MoodOption } from './lib/profile';
-import { createEvent } from './lib/api';
+import { createUserAggregate, type CreateEventSubmission } from './lib/api';
 
 type AppMapEvent = {
   id: string;
@@ -52,15 +52,24 @@ type AppMapEvent = {
 };
 
 type PostedEventPayload = {
+  host_user_id: string;
   title: string;
-  subtitle: string;
   description: string;
-  location?: string;
-  interestTag?: string;
-  category: string;
+  event_type: string;
+  interest_tag: string[];
+  skill_level_required: string;
+  latitude: number;
+  longitude: number;
+  event_time: string;
+  max_participants: number;
+  creator_location: {
+    latitude: number;
+    longitude: number;
+  } | null;
 };
 
 type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
+const USER_ID_STORAGE_KEY = 'aroundu.user.id';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
@@ -71,6 +80,8 @@ export default function App() {
   const [aiProfile, setAiProfile] = useState<AroundUAIProfile>(DEFAULT_AI_PROFILE);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
@@ -78,8 +89,16 @@ export default function App() {
     return () => window.clearTimeout(splashTimer);
   }, []);
 
+  useEffect(() => {
+    const storedUserId = window.localStorage.getItem(USER_ID_STORAGE_KEY);
+    if (storedUserId) {
+      setSessionUserId(storedUserId);
+    }
+  }, []);
+
   const buildMapEventFromPost = (post: PostedEventPayload): AppMapEvent => {
-    const categoryLabel = post.category.charAt(0).toUpperCase() + post.category.slice(1);
+    const eventType = post.event_type.toLowerCase();
+    const categoryLabel = post.event_type.charAt(0).toUpperCase() + post.event_type.slice(1);
 
     const iconByCategory = {
       study: BookOpen,
@@ -108,9 +127,9 @@ export default function App() {
       other: 'medium',
     } as const;
 
-    const icon = iconByCategory[post.category as keyof typeof iconByCategory] ?? Zap;
-    const activityLevel = activityByCategory[post.category as keyof typeof activityByCategory] ?? 'moderate';
-    const groupSize = groupSizeByCategory[post.category as keyof typeof groupSizeByCategory] ?? 'medium';
+    const icon = iconByCategory[eventType as keyof typeof iconByCategory] ?? Zap;
+    const activityLevel = activityByCategory[eventType as keyof typeof activityByCategory] ?? 'moderate';
+    const groupSize = groupSizeByCategory[eventType as keyof typeof groupSizeByCategory] ?? 'medium';
 
     const spreadIndex = userMapEvents.length;
     const top = 30 + ((spreadIndex * 13) % 40);
@@ -121,19 +140,19 @@ export default function App() {
       id: nextId,
       title: post.title,
       description: post.description,
-      location: post.location ?? 'Campus location',
+      location: `${post.latitude.toFixed(5)}, ${post.longitude.toFixed(5)}`,
       category: categoryLabel,
       host: aiProfile.name,
       attendees: 1,
-      maxAttendees: 8,
-      timeLeft: 'Starts now',
+      maxAttendees: post.max_participants,
+      timeLeft: post.event_time,
       photo: `https://picsum.photos/seed/${nextId}/600/400`,
-      tags: [post.interestTag ?? categoryLabel],
+      tags: post.interest_tag.length > 0 ? post.interest_tag : [categoryLabel],
       icon,
       top: `${top}%`,
       left: `${left}%`,
       activityLevel,
-      activityType: post.category,
+      activityType: post.event_type,
       groupSize,
     };
   };
@@ -144,9 +163,9 @@ export default function App() {
     const notification: EventToast = {
       id: mapEvent.id,
       title: post.title,
-      subtitle: post.subtitle,
-      location: post.location,
-      interestTag: post.interestTag,
+      subtitle: post.description.slice(0, 80),
+      location: `${post.latitude.toFixed(5)}, ${post.longitude.toFixed(5)}`,
+      interestTag: post.interest_tag[0],
       ctaLabel: 'View',
       durationMs: 5000,
     };
@@ -166,11 +185,17 @@ export default function App() {
   };
 
   const handleAuth = (payload: AuthSubmitPayload) => {
+    setAuthMode(payload.mode);
+
     if (payload.mode === 'signup') {
       setAiProfile(prev => ({
         ...prev,
         name: payload.name ?? prev.name,
       }));
+
+      // New account flow should create and persist a fresh user id after onboarding.
+      setSessionUserId(null);
+      window.localStorage.removeItem(USER_ID_STORAGE_KEY);
       setHasCompletedOnboarding(false);
       setShowMoodCheckIn(false);
       setCurrentScreen('onboarding');
@@ -186,7 +211,19 @@ export default function App() {
     setCurrentScreen('onboarding');
   };
 
-  const handleOnboardingComplete = (payload: OnboardingPayload) => {
+  const handleOnboardingComplete = async (payload: OnboardingPayload) => {
+    const nextProfile = {
+      ...aiProfile,
+      user_profile: {
+        ...aiProfile.user_profile,
+        ...payload,
+        personality: {
+          ...aiProfile.user_profile.personality,
+          ...payload.personality,
+        },
+      },
+    };
+
     setAiProfile(prev => ({
       ...prev,
       user_profile: {
@@ -198,6 +235,35 @@ export default function App() {
         },
       },
     }));
+
+    if (authMode === 'signup') {
+      try {
+        const created = await createUserAggregate({
+          name: nextProfile.name,
+          profile: {
+            year_of_study: nextProfile.user_profile.year_of_study,
+            major: nextProfile.user_profile.major,
+            mbti: nextProfile.user_profile.mbti,
+            mood: nextProfile.user_profile.mood,
+            fitness: nextProfile.user_profile.fitness,
+            extroversion: nextProfile.user_profile.personality.extroversion,
+            group_preference: nextProfile.user_profile.personality.group_preference,
+            energy_level: nextProfile.user_profile.personality.energy_level,
+          },
+          classes: nextProfile.user_profile.class,
+          clubs: nextProfile.user_profile.club,
+          interests: nextProfile.user_profile.interests,
+        });
+
+        if (created?.id) {
+          setSessionUserId(created.id);
+          window.localStorage.setItem(USER_ID_STORAGE_KEY, created.id);
+        }
+      } catch (error) {
+        console.error('Failed to store new user profile:', error);
+      }
+    }
+
     setHasCompletedOnboarding(true);
     setCurrentScreen('lounge');
     setShowMoodCheckIn(true);
@@ -306,7 +372,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} />}
           {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
-          {currentScreen === 'create' && <CreateEventScreen key="create" onEventPosted={handleEventPosted} />}
+          {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" />}
           {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}

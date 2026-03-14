@@ -26,37 +26,13 @@ async function request<T>(
     return undefined as T;
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  const rawBody = await response.text();
-
-  let payload: ApiEnvelope<T> | undefined;
-  let parsedBody: unknown;
-
-  if (rawBody.trim()) {
-    try {
-      parsedBody = JSON.parse(rawBody);
-      if (contentType.includes('application/json') && parsedBody && typeof parsedBody === 'object') {
-        payload = parsedBody as ApiEnvelope<T>;
-      }
-    } catch {
-      parsedBody = undefined;
-    }
-  }
+  const payload = (await response.json()) as ApiEnvelope<T>;
 
   if (!response.ok) {
-    const errorMessage =
-      payload?.error ||
-      payload?.message ||
-      (typeof rawBody === 'string' && rawBody.trim() ? rawBody.trim() : undefined) ||
-      `Request failed (${response.status})`;
-    throw new Error(errorMessage);
+    throw new Error(payload.error || `Request failed (${response.status})`);
   }
 
-  if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
-    return payload.data as T;
-  }
-
-  return parsedBody as T;
+  return payload.data as T;
 }
 
 function listResource<T>(resource: string, signal?: AbortSignal): Promise<T[]> {

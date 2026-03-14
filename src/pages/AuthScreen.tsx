@@ -5,7 +5,14 @@ import { cn } from '../lib/utils';
 import { ConstellationBackground } from '../components/ConstellationBackground';
 import { AroundULogo } from '../components/AroundULogo';
 
-export function AuthScreen({ onAuth }: { onAuth: () => void }) {
+export type AuthSubmitPayload = {
+  mode: 'signin' | 'signup';
+  name?: string;
+  email: string;
+  password: string;
+};
+
+export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -14,8 +21,21 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    onAuth();
+
+    if (!email.trim() || !password.trim()) {
+      return;
+    }
+
+    if (mode === 'signup' && !name.trim()) {
+      return;
+    }
+
+    onAuth({
+      mode,
+      email: email.trim(),
+      password,
+      name: mode === 'signup' ? name.trim() : undefined,
+    });
   };
 
   return (
@@ -45,7 +65,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
             <button
               onClick={() => setMode('signup')}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
+                "btn-tactile btn-tactile-soft flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
                 mode === 'signup'
                   ? "bg-white text-ink-900 shadow-sm"
                   : "text-ink-400 hover:text-ink-600"
@@ -56,7 +76,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
             <button
               onClick={() => setMode('signin')}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300",
+                "btn-tactile btn-tactile-soft flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
                 mode === 'signin'
                   ? "bg-white text-ink-900 shadow-sm"
                   : "text-ink-400 hover:text-ink-600"
@@ -81,6 +101,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="What should we call you?"
+                  required={mode === 'signup'}
                   className="w-full bg-surface-50 border border-surface-200 rounded-2xl px-4 py-3.5 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-300 transition-all"
                 />
               </motion.div>
@@ -93,6 +114,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="your.email@university.edu"
+                required
                 className="w-full bg-surface-50 border border-surface-200 rounded-2xl px-4 py-3.5 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-300 transition-all"
               />
             </div>
@@ -105,12 +127,13 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Create a password"
+                  required
                   className="w-full bg-surface-50 border border-surface-200 rounded-2xl px-4 py-3.5 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-300 transition-all pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600 transition-colors"
+                  className="btn-tactile absolute right-4 top-1/2 -translate-y-1/2 rounded-lg p-1 text-ink-400 transition-colors hover:bg-surface-100 hover:text-ink-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -119,11 +142,17 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
             <button
               type="submit"
-              className="w-full bg-primary-500 hover:bg-primary-600 text-white font-semibold py-3.5 rounded-2xl transition-all duration-300 shadow-sm shadow-primary-500/20 hover:shadow-[0_0_20px_rgba(112,147,136,0.3)] flex items-center justify-center gap-2 mt-6 group"
+              className="btn-tactile btn-tactile-solid mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3.5 font-semibold text-white shadow-sm shadow-primary-500/20 hover:bg-primary-600"
             >
               <span>{mode === 'signup' ? 'Get started' : 'Welcome back'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
+
+            <p className="pt-1 text-center text-xs text-ink-400">
+              {mode === 'signup'
+                ? 'Just the essentials here. You can finish your profile in calm, guided steps next.'
+                : 'Sign in to continue. You can update your profile details at any time.'}
+            </p>
           </form>
         </div>
       </motion.div>

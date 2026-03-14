@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
-import { AuthScreen } from './pages/AuthScreen';
-import { OnboardingScreen } from './pages/OnboardingScreen';
+import { AuthScreen, type AuthSubmitPayload } from './pages/AuthScreen';
+import { OnboardingScreen, type OnboardingPayload } from './pages/OnboardingScreen';
 import { LoungeScreen } from './pages/LoungeScreen';
 import { MapScreen } from './pages/MapScreen';
 import { CreateEventScreen } from './pages/CreateEventScreen';
@@ -27,6 +27,8 @@ import { EventNotificationStack, type EventToast } from './components/EventNotif
 import { AroundUEmblem, AroundULogo } from './components/AroundULogo';
 import { SplashScreen } from './components/SplashScreen';
 import { ConstellationBackground } from './components/ConstellationBackground';
+import { MoodCheckInModal } from './components/MoodCheckInModal';
+import { DEFAULT_AI_PROFILE, type AroundUAIProfile, type MoodOption } from './lib/profile';
 import { createEvent } from './lib/api';
 
 type AppMapEvent = {
@@ -66,6 +68,10 @@ export default function App() {
   const [eventNotifications, setEventNotifications] = useState<EventToast[]>([]);
   const [userMapEvents, setUserMapEvents] = useState<AppMapEvent[]>([]);
   const [mapFocusEventId, setMapFocusEventId] = useState<string | null>(null);
+  const [aiProfile, setAiProfile] = useState<AroundUAIProfile>(DEFAULT_AI_PROFILE);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
+  const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 1700);
@@ -117,7 +123,7 @@ export default function App() {
       description: post.description,
       location: post.location ?? 'Campus location',
       category: categoryLabel,
-      host: 'Alex Rivers',
+      host: aiProfile.name,
       attendees: 1,
       maxAttendees: 8,
       timeLeft: 'Starts now',
@@ -159,17 +165,71 @@ export default function App() {
     dismissNotification(id);
   };
 
+  const handleAuth = (payload: AuthSubmitPayload) => {
+    if (payload.mode === 'signup') {
+      setAiProfile(prev => ({
+        ...prev,
+        name: payload.name ?? prev.name,
+      }));
+      setHasCompletedOnboarding(false);
+      setShowMoodCheckIn(false);
+      setCurrentScreen('onboarding');
+      return;
+    }
+
+    if (hasCompletedOnboarding) {
+      setCurrentScreen('lounge');
+      setShowMoodCheckIn(true);
+      return;
+    }
+
+    setCurrentScreen('onboarding');
+  };
+
+  const handleOnboardingComplete = (payload: OnboardingPayload) => {
+    setAiProfile(prev => ({
+      ...prev,
+      user_profile: {
+        ...prev.user_profile,
+        ...payload,
+        personality: {
+          ...prev.user_profile.personality,
+          ...payload.personality,
+        },
+      },
+    }));
+    setHasCompletedOnboarding(true);
+    setCurrentScreen('lounge');
+    setShowMoodCheckIn(true);
+  };
+
+  const handleMoodSelect = (mood: MoodOption) => {
+    setAiProfile(prev => ({
+      ...prev,
+      user_profile: {
+        ...prev.user_profile,
+        mood,
+      },
+    }));
+    setShowMoodCheckIn(false);
+  };
+
+  const handleProfileSave = (profile: AroundUAIProfile) => {
+    setAiProfile(profile);
+    setCurrentScreen('profile');
+  };
+
   if (showSplash) {
     return <SplashScreen />;
   }
 
   // Full-screen flows (no sidebar)
   if (currentScreen === 'auth') {
-    return <AuthScreen onAuth={() => setCurrentScreen('onboarding')} />;
+    return <AuthScreen onAuth={handleAuth} />;
   }
 
   if (currentScreen === 'onboarding') {
-    return <OnboardingScreen onComplete={() => setCurrentScreen('lounge')} />;
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
   return (
@@ -225,13 +285,13 @@ export default function App() {
               className="flex items-center space-x-3 p-2 w-full rounded-2xl hover:bg-surface-100 transition-colors cursor-pointer"
             >
               <img 
-                src="https://picsum.photos/seed/alex/100/100" 
-                alt="Alex Rivers" 
+                src={profilePhotoUrl}
+                alt={aiProfile.name} 
                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                 referrerPolicy="no-referrer"
               />
               <div className="hidden md:block text-left">
-                <p className="text-sm font-semibold text-ink-800">Alex Rivers</p>
+                <p className="text-sm font-semibold text-ink-800">{aiProfile.name}</p>
                 <p className="text-xs text-ink-500 font-medium">Online now</p>
               </div>
             </button>
@@ -245,18 +305,24 @@ export default function App() {
 
         <AnimatePresence mode="wait">
           {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} />}
-          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
+          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
           {currentScreen === 'create' && <CreateEventScreen key="create" onEventPosted={handleEventPosted} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" />}
-          {currentScreen === 'profile' && <ProfileScreen key="profile" onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
-          {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" onBack={() => setCurrentScreen('profile')} />}
+          {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
+          {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" profile={aiProfile} onBack={() => setCurrentScreen('profile')} onSave={handleProfileSave} />}
         </AnimatePresence>
 
         <EventNotificationStack
           notifications={eventNotifications}
           onDismiss={dismissNotification}
           onOpen={openNotification}
+        />
+
+        <MoodCheckInModal
+          open={showMoodCheckIn}
+          onSkip={() => setShowMoodCheckIn(false)}
+          onSelectMood={handleMoodSelect}
         />
       </main>
     </div>

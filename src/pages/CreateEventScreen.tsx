@@ -15,16 +15,6 @@ type PostedEventPayload = {
   category: string;
 };
 
-const BUILDING_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
-  'Bahen Centre': { latitude: 43.6599, longitude: -79.3984 },
-  'Robarts Library': { latitude: 43.6645, longitude: -79.3994 },
-  'Hart House': { latitude: 43.6642, longitude: -79.3949 },
-  'Sidney Smith Hall': { latitude: 43.6672, longitude: -79.3994 },
-  'Student Union': { latitude: 43.6633, longitude: -79.3985 },
-  'Athletic Centre': { latitude: 43.6677, longitude: -79.4004 },
-  Outdoor: { latitude: 43.6632, longitude: -79.3959 },
-};
-
 export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: PostedEventPayload) => void }) {
   const [form, setForm] = useState({
     title: '',
@@ -40,8 +30,6 @@ export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: P
   });
   const [tagInput, setTagInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const selectedBuilding = campusLocations.find(l => l.building === form.building);
@@ -61,65 +49,51 @@ export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: P
     updateForm('tags', form.tags.filter(t => t !== tag));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (isSubmitting) {
-      return;
-    }
 
     const categoryLabel = eventCategories.find(cat => cat.value === form.category)?.label ?? 'Event';
     const subtitle = form.description.trim()
       ? form.description.trim().slice(0, 90)
       : `${categoryLabel} meetup nearby`;
-    const locationLabel = form.building
-      ? `${form.building}${form.room ? ` · ${form.room}` : ''}`
-      : form.customLocation.trim() || undefined;
-    const eventCoords = BUILDING_COORDINATES[form.building] || { latitude: 43.6632, longitude: -79.3959 };
-    const now = Date.now();
-    const startsInOffsets: Record<string, number> = {
-      now: 0,
-      '15min': 15,
-      '30min': 30,
-      '1hr': 60,
-    };
-    const offsetMinutes = startsInOffsets[form.startsIn] ?? 0;
 
-    setSubmitError(null);
-    setIsSubmitting(true);
+    onEventPosted?.({
+      title: form.title.trim(),
+      subtitle,
+      description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
+      location: form.building
+        ? `${form.building}${form.room ? ` · ${form.room}` : ''}`
+        : form.customLocation.trim() || undefined,
+      interestTag: form.tags[0],
+      category: form.category,
+    });
 
-    try {
-      await createEvent({
-        title: form.title.trim(),
-        description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
-        event_type: categoryLabel,
-        interest_tag: form.tags,
-        skill_level_required: 'All',
-        latitude: eventCoords.latitude,
-        longitude: eventCoords.longitude,
-        event_time: new Date(now + offsetMinutes * 60 * 1000).toISOString(),
-        max_participants: form.maxAttendees,
-      });
-
-      onEventPosted?.({
-        title: form.title.trim(),
-        subtitle,
-        description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
-        location: locationLabel,
-        interestTag: form.tags[0],
-        category: form.category,
-      });
-
-      setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 4000);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not create event. Please try again.';
-      setSubmitError(message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    setSubmitted(true);
+    setTimeout(() => setSubmitted(false), 4000);
   }
 
+  async function handleCreateEvent() {
+    console.log('hello')
+    try {
+      const created = await createEvent({
+        host_user_id: '22222222-2222-2222-2222-222222222222',
+        title: 'Morning Study Sprint',
+        description: 'Focused 90-minute study block before class.',
+        event_type: 'Academics',
+        interest_tag: ['Study Group', 'Focus'],
+        skill_level_required: 'All',
+        latitude: 43.6632,
+        longitude: -79.3959,
+        event_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        max_participants: 8,
+      });
+
+      console.log('Created event:', created);
+    } catch (error) {
+      console.error('Failed to create event:', error);
+    }
+  }
+  handleCreateEvent();
   const locationDisplay = form.building 
     ? `${form.building}${form.room ? ` · ${form.room}` : ''}`
     : form.customLocation || 'Choose a location';
@@ -155,12 +129,6 @@ export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: P
             </motion.div>
           )}
         </AnimatePresence>
-
-        {submitError && (
-          <div className="mb-8 p-4 bg-rose-50 border border-rose-400/20 text-rose-600 rounded-2xl text-sm">
-            {submitError}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Event Name */}
@@ -414,11 +382,11 @@ export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: P
           {/* Submit */}
           <button
             type="submit"
-            disabled={!form.title.trim() || !form.category || isSubmitting}
+            disabled={!form.title.trim() || !form.category}
             className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-sm shadow-primary-500/20 transition-all duration-500 active:scale-[0.98] text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(112,147,136,0.5)] overflow-hidden relative group"
           >
             <div className="absolute inset-0 bg-white/20 scale-0 rounded-full group-hover:animate-ripple z-0 pointer-events-none" />
-            <span className="relative z-10">{isSubmitting ? 'Creating event...' : 'Send invites to nearby students'}</span>
+            <span className="relative z-10">Send invites to nearby students</span>
           </button>
         </form>
       </div>

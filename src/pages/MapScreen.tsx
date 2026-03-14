@@ -4,6 +4,7 @@ import { CalendarPlus, Home, MessageSquare, Plus, Search } from 'lucide-react';
 import CampusMap from '../components/map/CampusMap';
 import { mapEvents } from '../data/mockData';
 import { fetchEventsForMap, type MapEventPayload } from '../lib/api';
+import { type AroundUAIProfile } from '../lib/profile';
 
 type MapEvent = MapEventPayload & {
   id: string;
@@ -116,13 +117,18 @@ type MapScreenProps = {
   onBack: () => void;
   onCreateEvent: () => void;
   onGoToMessages: () => void;
+  profile: AroundUAIProfile;
+  profilePhotoUrl: string;
   userEvents?: MapEvent[];
   initialFocusEventId?: string | null;
   onFocusHandled?: () => void;
 };
 
-export function MapScreen({ onBack, onCreateEvent, onGoToMessages, userEvents = [], initialFocusEventId, onFocusHandled }: MapScreenProps) {
+const CAMPUS_FALLBACK_POSITION = { lat: 43.6631, lng: -79.3958 };
+
+export function MapScreen({ onBack, onCreateEvent, onGoToMessages, profile, profilePhotoUrl, userEvents = [], initialFocusEventId, onFocusHandled }: MapScreenProps) {
   const [backendEvents, setBackendEvents] = useState<MapEvent[]>([]);
+  const [userPosition, setUserPosition] = useState(CAMPUS_FALLBACK_POSITION);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,6 +142,33 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, userEvents = 
       });
 
     return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!('geolocation' in navigator)) {
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setUserPosition({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setUserPosition(CAMPUS_FALLBACK_POSITION);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 12000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   const displayedEvents = useMemo<MapEvent[]>(
@@ -160,6 +193,9 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, userEvents = 
       <div className="absolute inset-0 p-3 sm:p-5">
         <CampusMap
           events={displayedEvents}
+          userProfile={profile}
+          userPhotoUrl={profilePhotoUrl}
+          userPosition={userPosition}
           focusEventId={initialFocusEventId}
           onFocusHandled={onFocusHandled}
           className="h-full"

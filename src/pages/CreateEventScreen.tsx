@@ -4,6 +4,7 @@ import { Check, X, MapPin, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { FieldGroup } from '../components/FieldGroup';
 import { eventCategories, campusLocations, durations } from '../data/mockData';
+import { ConstellationBackground } from '../components/ConstellationBackground';
 
 export function CreateEventScreen() {
   const [form, setForm] = useState({
@@ -53,10 +54,12 @@ export function CreateEventScreen() {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="h-full overflow-y-auto custom-scrollbar"
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="h-full overflow-y-auto custom-scrollbar relative"
     >
-      <div className="max-w-2xl mx-auto px-8 py-12">
+      <ConstellationBackground />
+
+      <div className="max-w-2xl mx-auto px-8 py-12 relative z-10">
         {/* Header */}
         <div className="mb-10 block text-center sm:text-left transition-all">
           <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Start a gathering</h2>
@@ -334,9 +337,10 @@ export function CreateEventScreen() {
           <button
             type="submit"
             disabled={!form.title.trim() || !form.category}
-            className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-sm shadow-primary-500/20 transition-all duration-200 active:scale-[0.98] text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-sm shadow-primary-500/20 transition-all duration-500 active:scale-[0.98] text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_20px_rgba(112,147,136,0.5)] overflow-hidden relative group"
           >
-            Send invites to nearby students
+            <div className="absolute inset-0 bg-white/20 scale-0 rounded-full group-hover:animate-ripple z-0 pointer-events-none" />
+            <span className="relative z-10">Send invites to nearby students</span>
           </button>
         </form>
       </div>

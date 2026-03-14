@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { SkillCard } from '../components/SkillCard';
+import { ConstellationDivider } from '../components/ConstellationDivider';
+import { ConstellationBackground } from '../components/ConstellationBackground';
 
 export function CommunitiesScreen() {
   return (
@@ -8,8 +10,10 @@ export function CommunitiesScreen() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 1.02 }}
-      className="h-full overflow-y-auto custom-scrollbar"
+      className="h-full overflow-y-auto custom-scrollbar relative"
     >
+      <ConstellationBackground />
+
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-surface-200">
         <div className="max-w-6xl mx-auto px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8 text-sm font-medium text-ink-500">
@@ -41,7 +45,9 @@ export function CommunitiesScreen() {
           </div>
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <ConstellationDivider className="mb-12 mt-4" />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
           <SkillCard 
             name="Sarah Chen"
             role="Design Student · 2km away"

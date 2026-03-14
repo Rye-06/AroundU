@@ -8,16 +8,29 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
+import { AuthScreen } from './pages/AuthScreen';
+import { OnboardingScreen } from './pages/OnboardingScreen';
 import { LoungeScreen } from './pages/LoungeScreen';
 import { MapScreen } from './pages/MapScreen';
 import { CreateEventScreen } from './pages/CreateEventScreen';
 import { CommunitiesScreen } from './pages/CommunitiesScreen';
 import { MessagesScreen } from './pages/MessagesScreen';
+import { ProfileScreen } from './pages/ProfileScreen';
+import { EditProfileScreen } from './pages/EditProfileScreen';
 
-type Screen = 'lounge' | 'map' | 'communities' | 'messages' | 'create';
+type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('lounge');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
+
+  // Full-screen flows (no sidebar)
+  if (currentScreen === 'auth') {
+    return <AuthScreen onAuth={() => setCurrentScreen('onboarding')} />;
+  }
+
+  if (currentScreen === 'onboarding') {
+    return <OnboardingScreen onComplete={() => setCurrentScreen('lounge')} />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50">
@@ -63,18 +76,21 @@ export default function App() {
           </nav>
 
           <div className="p-4 border-t border-surface-200">
-            <div className="flex items-center space-x-3 p-2 rounded-2xl hover:bg-surface-100 transition-colors cursor-pointer">
+            <button
+              onClick={() => setCurrentScreen('profile')}
+              className="flex items-center space-x-3 p-2 w-full rounded-2xl hover:bg-surface-100 transition-colors cursor-pointer"
+            >
               <img 
                 src="https://picsum.photos/seed/alex/100/100" 
                 alt="Alex Rivers" 
                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                 referrerPolicy="no-referrer"
               />
-              <div className="hidden md:block">
+              <div className="hidden md:block text-left">
                 <p className="text-sm font-semibold text-ink-800">Alex Rivers</p>
                 <p className="text-xs text-ink-500 font-medium">Online now</p>
               </div>
-            </div>
+            </button>
           </div>
         </aside>
       )}
@@ -87,6 +103,8 @@ export default function App() {
           {currentScreen === 'create' && <CreateEventScreen key="create" />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" />}
+          {currentScreen === 'profile' && <ProfileScreen key="profile" onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
+          {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" onBack={() => setCurrentScreen('profile')} />}
         </AnimatePresence>
       </main>
     </div>
@@ -98,10 +116,10 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
     <button 
       onClick={onClick}
       className={cn(
-        "flex items-center space-x-3 p-3 w-full rounded-xl transition-all duration-200",
+        "flex items-center space-x-3 p-3 w-full rounded-xl transition-all duration-300",
         active 
-          ? "bg-white text-primary-600 shadow-sm" 
-          : "text-ink-500 hover:bg-white/50"
+          ? "bg-white text-primary-600 shadow-[0_5px_20px_rgba(112,147,136,0.15)] scale-[1.02]" 
+          : "text-ink-500 hover:bg-white/50 hover:shadow-[0_0_10px_rgba(112,147,136,0.05)]"
       )}
     >
       {icon}

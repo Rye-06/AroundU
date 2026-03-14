@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Search, MapPin, Clock, Users, MessageSquare, Settings, Plus, X, Sparkles, Send, Check } from 'lucide-react';
+import { Home, Search, Clock, Users, MessageSquare, Plus, X, Sparkles, Send, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { mapEvents, mapIcebreakers } from '../data/mockData';
+
+// Helper to parse '20%' to 20
+const getNum = (val: string) => parseFloat(val.replace('%', ''));
+
 
 export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: () => void, onCreateEvent: () => void, onGoToMessages: () => void }) {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
@@ -58,6 +62,8 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
     }
   };
 
+  const hasSelection = selectedEvent || selectedIcebreaker;
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -71,8 +77,8 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         className="absolute inset-0 cursor-default"
         onClick={handleMapClick}
       >
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-primary-200 rounded-full blur-[100px] animate-pulse pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-coral-100 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-primary-200/40 rounded-full blur-[100px] animate-pulse pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-coral-100/40 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
       </div>
 
       {/* Header */}
@@ -115,20 +121,58 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         const isFarLeft = parseInt(event.left) < 30;
         const isFarRight = parseInt(event.left) > 70;
         
+        const isDimmed = hasSelection && !isSelected;
+        
+        // --- Intuitive Map Pin Logic ---
+        
+        // 1. Activity Level -> Size & Glow (larger readable sizes)
+        let sizeClass = "w-[18px] h-[18px]"; // moderate
+        let iconSizeClass = "w-[10px] h-[10px]";
+        let glowClass = "shadow-[0_0_10px_rgba(112,147,136,0.2)]";
+        
+        if (event.activityLevel === 'quiet') {
+          sizeClass = "w-[14px] h-[14px]";
+          iconSizeClass = "w-[8px] h-[8px]";
+          glowClass = ""; // no glow for quiet
+        } else if (event.activityLevel === 'high') {
+          sizeClass = "w-[22px] h-[22px]";
+          iconSizeClass = "w-[12px] h-[12px]";
+          glowClass = "shadow-[0_0_12px_rgba(112,147,136,0.3)]"; // gentle halo
+        }
+
+        // 2. Group Size -> Ring (thinner, calmer rings)
+        let ringClass = "outline outline-1 outline-offset-2 outline-primary-300/30"; // medium ring
+        if (event.groupSize === 'small') {
+          ringClass = "outline outline-1 outline-offset-[2px] outline-primary-300/20"; // thin ring
+        } else if (event.groupSize === 'large') {
+          ringClass = "outline outline-1 outline-offset-[3px] outline-dashed outline-primary-400/40"; // broken ring
+        }
+
         return (
           <div 
             key={event.id}
-            className={cn("absolute z-10 font-sans", isSelected ? "z-30" : "")}
-            style={{ top: event.top, left: event.left }}
+            className={cn("absolute z-10 font-sans transition-opacity duration-700 ease-out group", isSelected ? "z-30" : "hover:z-20", isDimmed ? "opacity-30" : "opacity-100")}
+            style={{ top: event.top, left: event.left, transform: 'translate(-50%, -50%)' }} // proper centering
           >
-            {/* Inline Popover Card (renders ABOVE the marker) */}
+            {/* Quick Hover Label (only shows if NOT selected) */}
+            <AnimatePresence>
+              {!isSelected && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md shadow-sm border border-surface-200 text-[10px] font-medium text-ink-700">
+                    {event.category} group · {event.attendees} people
+                  </div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Inline Popover Card (renders ABOVE the marker when clicked) */}
             <AnimatePresence>
               {isSelected && (
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  transition={{ duration: 0.25, ease: "easeOut" }} // exactly 250ms duration
                   className={cn(
                     "absolute bottom-full mb-3 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl shadow-surface-200/50 border border-surface-100 p-4",
                     isFarLeft ? "left-0 origin-bottom-left" : isFarRight ? "right-0 origin-bottom-right" : "left-1/2 -translate-x-1/2 origin-bottom"
@@ -171,31 +215,35 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
                     
                     <button 
                       onClick={() => { setSelectedEvent(null); onGoToMessages(); }}
-                      className="px-3 py-1.5 bg-primary-50 text-primary-600 hover:bg-primary-100 text-xs font-bold rounded-lg transition-colors"
+                      className="text-primary-600 hover:text-primary-700 text-[11px] font-bold transition-colors"
                     >
-                      View Details
+                      join if you'd like
                     </button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Marker Itself */}
+            {/* Marker Itself - Intuitive Node with enlarged hit area */}
             <div 
-              className="flex flex-col items-center cursor-pointer group"
+              className="flex items-center justify-center cursor-pointer relative p-4"
               onClick={(e) => { 
                 e.stopPropagation(); 
                 setSelectedEvent(isSelected ? null : event.id); 
                 setSelectedIcebreaker(null); 
               }}
             >
-              <div className={cn(
-                "w-11 h-11 bg-white rounded-3xl flex items-center justify-center border transition-all duration-500 pointer-events-auto",
-                isSelected 
-                  ? "border-primary-300 scale-100 shadow-[0_0_25px_rgba(112,147,136,0.4)]" 
-                  : "border-surface-200 shadow-sm shadow-primary-500/10 group-hover:scale-[1.02] group-hover:shadow-[0_0_15px_rgba(112,147,136,0.2)]"
-              )}>
-                <div className={cn("transition-colors duration-300", isSelected ? "text-primary-500" : "text-primary-400")}><Icon className="w-5 h-5" /></div>
+              <div 
+                className={cn(
+                  "rounded-full pointer-events-auto transition-transform duration-500 flex items-center justify-center",
+                  "bg-primary-500 text-white",
+                  sizeClass,
+                  glowClass,
+                  ringClass,
+                  isSelected ? "scale-[1.08]" : "group-hover:scale-[1.06]"
+                )}
+              >
+                <Icon className={cn(iconSizeClass, "opacity-90 stroke-[2.5]")} />
               </div>
             </div>
           </div>
@@ -207,13 +255,23 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         const isSelected = selectedIcebreaker === ice.id;
         const isFarLeft = parseInt(ice.left) < 30;
         const isFarRight = parseInt(ice.left) > 70;
+        const isDimmed = hasSelection && !isSelected;
 
         return (
           <div 
             key={ice.id}
-            className={cn("absolute z-10 font-sans", isSelected ? "z-30" : "")}
-            style={{ top: ice.top, left: ice.left }}
+            className={cn("absolute z-10 font-sans transition-opacity duration-700 ease-out group", isSelected ? "z-30" : "hover:z-20", isDimmed ? "opacity-30" : "opacity-100")}
+            style={{ top: ice.top, left: ice.left, transform: 'translate(-50%, -50%)' }}
           >
+            {/* Quick Hover Label */}
+            {!isSelected && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <div className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md shadow-sm border border-surface-200 text-[10px] font-medium text-ink-700">
+                  {ice.author}: "{ice.message.slice(0, 30)}..."
+                </div>
+              </div>
+            )}
+
             {/* Inline Popover Card */}
             <AnimatePresence>
               {isSelected && (
@@ -221,7 +279,7 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
                   className={cn(
                     "absolute bottom-full mb-3 w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl shadow-surface-200/50 border border-surface-100 p-4 text-center",
                     isFarLeft ? "left-0 origin-bottom-left" : isFarRight ? "right-0 origin-bottom-right" : "left-1/2 -translate-x-1/2 origin-bottom"
@@ -250,9 +308,9 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
               )}
             </AnimatePresence>
 
-            {/* Icebreaker Marker */}
+            {/* Icebreaker Marker - Avatar node with speech indicator */}
             <div 
-              className="flex flex-col items-center cursor-pointer group pointer-events-auto"
+              className="flex items-center justify-center cursor-pointer pointer-events-auto p-3"
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedIcebreaker(isSelected ? null : ice.id);
@@ -260,16 +318,17 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
               }}
             >
               <div className={cn(
-                "p-1 bg-white rounded-full flex items-center justify-center border transition-all duration-500",
-                isSelected 
-                  ? "scale-100 border-coral-300 shadow-[0_0_25px_rgba(139,128,182,0.5)]" 
-                  : "border-surface-200 shadow-sm shadow-coral-500/10 group-hover:scale-[1.02] group-hover:shadow-[0_0_15px_rgba(139,128,182,0.3)] group-hover:border-coral-200"
+                "relative rounded-full transition-transform duration-500",
+                isSelected ? "scale-[1.08]" : "group-hover:scale-[1.06]"
               )}>
-                <div className="relative">
-                  <img src={ice.avatar} alt={ice.author} className="w-9 h-9 rounded-full" referrerPolicy="no-referrer" />
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-coral-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    <MessageSquare className="w-2.5 h-2.5" />
-                  </div>
+                <img 
+                  src={ice.avatar} 
+                  alt={ice.author} 
+                  className="w-8 h-8 rounded-full border-2 border-white shadow-sm" 
+                  referrerPolicy="no-referrer" 
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-coral-400 text-white rounded-full flex items-center justify-center border border-white">
+                  <MessageSquare className="w-2 h-2" />
                 </div>
               </div>
             </div>
@@ -313,11 +372,12 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         <button
           onClick={(e) => { e.stopPropagation(); setShowFabMenu(!showFabMenu); }}
           className={cn(
-            "w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 active:scale-95 hover:scale-105",
-            showFabMenu ? "bg-ink-800 text-white shadow-ink-300 rotate-45" : "bg-primary-500 hover:bg-primary-600 text-white shadow-primary-300"
+            "w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-500 active:scale-95 group hover:shadow-[0_0_25px_rgba(112,147,136,0.5)] overflow-hidden relative",
+            showFabMenu ? "bg-ink-800 text-white shadow-ink-300/50 rotate-45" : "bg-primary-500 text-white hover:bg-primary-600"
           )}
         >
-          <Plus className="w-7 h-7" />
+          <div className="absolute inset-0 bg-white/20 scale-0 rounded-full group-hover:animate-ripple z-0 pointer-events-none" />
+          <Plus className="w-7 h-7 relative z-10" />
         </button>
       </div>
 

@@ -44,6 +44,9 @@ export const mapEvents = [
     icon: BookOpen,
     top: '30%',
     left: '40%',
+    activityLevel: 'moderate',
+    activityType: 'study',
+    groupSize: 'medium',
   },
   {
     id: 'coffee1',
@@ -60,6 +63,9 @@ export const mapEvents = [
     icon: Coffee,
     top: '65%',
     left: '70%',
+    activityLevel: 'quiet',
+    activityType: 'social',
+    groupSize: 'small',
   },
   {
     id: 'sports1',
@@ -76,6 +82,9 @@ export const mapEvents = [
     icon: Dumbbell,
     top: '55%',
     left: '25%',
+    activityLevel: 'high',
+    activityType: 'activity',
+    groupSize: 'large',
   },
 ];
 

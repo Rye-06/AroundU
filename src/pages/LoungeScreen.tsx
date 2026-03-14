@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
-import { Plus, BookOpen, Dumbbell } from 'lucide-react';
+import { BookOpen, Dumbbell } from 'lucide-react';
 import { FeedItem } from '../components/FeedItem';
 import { CommunityCard } from '../components/CommunityCard';
 import { NearbyEvent } from '../components/NearbyEvent';
+import { ConstellationDivider } from '../components/ConstellationDivider';
+import { ConstellationHero } from '../components/ConstellationHero';
 
 export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
   return (
@@ -11,23 +13,11 @@ export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="h-full overflow-y-auto custom-scrollbar"
+      className="h-full overflow-y-auto custom-scrollbar relative"
     >
-      <header className="max-w-5xl mx-auto pt-14 px-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Good morning, Alex.</h2>
-            <p className="text-ink-500 mt-2 font-medium">4 friends nearby · 8 events happening today</p>
-          </div>
-          <button 
-            onClick={onCreateEvent}
-            className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm shadow-primary-500/20 hover:shadow-primary-500/30 hover:-translate-y-0.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Host a gathering</span>
-          </button>
-        </div>
-      </header>
+      <div className="max-w-5xl mx-auto pt-10 px-8 relative z-10">
+        <ConstellationHero onCreateEvent={onCreateEvent} />
+      </div>
 
       <div className="max-w-5xl mx-auto px-8 py-10 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-8 space-y-14">
@@ -53,6 +43,8 @@ export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
               />
             </div>
           </section>
+
+          <ConstellationDivider className="my-8" />
 
           <section>
             <div className="flex justify-between items-end mb-6">

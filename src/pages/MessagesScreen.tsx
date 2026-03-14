@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Search, Settings, BookOpen, Dumbbell, Bell, MoreVertical, Plus, Smile, Check, FileText } from 'lucide-react';
 import { ChatListItem } from '../components/ChatListItem';
 import { ChatMessage } from '../components/ChatMessage';
+import { ConstellationBackground } from '../components/ConstellationBackground';
 
 export function MessagesScreen() {
   return (
@@ -9,9 +10,9 @@ export function MessagesScreen() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="h-full flex overflow-hidden text-ink-700"
+      className="h-full flex overflow-hidden text-ink-700 relative"
     >
-      <aside className="w-80 bg-surface-50 border-r border-surface-200 flex flex-col shrink-0">
+      <aside className="w-80 bg-surface-50 border-r border-surface-200 flex flex-col shrink-0 relative z-10">
         <div className="p-6">
           <h1 className="text-xl font-bold text-ink-800">Messages</h1>
           <p className="text-xs text-ink-400 mt-1">Stay connected</p>
@@ -83,7 +84,9 @@ export function MessagesScreen() {
         </div>
       </aside>
 
-      <div className="flex-1 bg-white flex flex-col relative">
+      <div className="flex-1 bg-white flex flex-col relative z-0">
+        <ConstellationBackground />
+
         <header className="h-16 border-b border-surface-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-sm z-10">
           <div className="flex items-center gap-4">
             <div className="flex -space-x-2">

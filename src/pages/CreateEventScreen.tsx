@@ -58,9 +58,9 @@ export function CreateEventScreen() {
     >
       <div className="max-w-2xl mx-auto px-8 py-12">
         {/* Header */}
-        <div className="mb-10">
-          <h2 className="text-3xl font-bold text-ink-900">Create an Event</h2>
-          <p className="text-ink-500 mt-2">Set it up and ping nearby people to join.</p>
+        <div className="mb-10 block text-center sm:text-left transition-all">
+          <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Start a gathering</h2>
+          <p className="text-ink-500 mt-2 text-sm sm:text-base font-medium">Plan something casual and ping nearby students.</p>
         </div>
 
         {/* Success Banner */}
@@ -83,18 +83,18 @@ export function CreateEventScreen() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Event Name */}
-          <FieldGroup label="Event Name" required>
+          <FieldGroup label="What are we doing?" required>
             <input
               type="text"
               value={form.title}
               onChange={e => updateForm('title', e.target.value)}
-              placeholder="e.g. Coffee & Cram for CSC108"
+              placeholder="e.g. Chill study session for midterms..."
               className="w-full px-4 py-3.5 rounded-xl bg-white border border-surface-200 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-all"
             />
           </FieldGroup>
 
           {/* Category */}
-          <FieldGroup label="Category" required>
+          <FieldGroup label="Pick a vibe" required>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {eventCategories.map(cat => {
                 const Icon = cat.icon;
@@ -120,7 +120,7 @@ export function CreateEventScreen() {
           </FieldGroup>
 
           {/* Description */}
-          <FieldGroup label="What's the plan?">
+          <FieldGroup label="Any details?">
             <textarea
               value={form.description}
               onChange={e => updateForm('description', e.target.value)}
@@ -131,7 +131,7 @@ export function CreateEventScreen() {
           </FieldGroup>
 
           {/* Location */}
-          <FieldGroup label="Location" required>
+          <FieldGroup label="Where to?" required>
             <button
               type="button"
               onClick={() => setShowLocationPicker(!showLocationPicker)}
@@ -226,7 +226,7 @@ export function CreateEventScreen() {
           {/* Timing Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Start Time */}
-            <FieldGroup label="Starts">
+            <FieldGroup label="When">
               <div className="flex gap-2">
                 {['now', '15min', '30min', '1hr'].map(opt => (
                   <button
@@ -247,7 +247,7 @@ export function CreateEventScreen() {
             </FieldGroup>
 
             {/* Duration */}
-            <FieldGroup label="Duration">
+            <FieldGroup label="For how long?">
               <div className="grid grid-cols-3 gap-2">
                 {durations.map(d => (
                   <button
@@ -334,9 +334,9 @@ export function CreateEventScreen() {
           <button
             type="submit"
             disabled={!form.title.trim() || !form.category}
-            className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-lg shadow-primary-200 transition-all duration-200 active:scale-[0.98] text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-primary-500 hover:bg-primary-600 text-white font-bold rounded-2xl shadow-sm shadow-primary-500/20 transition-all duration-200 active:scale-[0.98] text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Create Event & Ping Nearby
+            Send invites to nearby students
           </button>
         </form>
       </div>

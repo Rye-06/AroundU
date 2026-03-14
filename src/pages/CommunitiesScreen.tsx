@@ -17,27 +17,27 @@ export function CommunitiesScreen() {
             <a href="#" className="hover:text-ink-900 transition-colors">Shared Learning</a>
             <a href="#" className="hover:text-ink-900 transition-colors">Communities</a>
           </div>
-          <button className="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors font-medium text-sm">Post a Skill</button>
+          <button className="bg-primary-500 text-white px-5 py-2.5 rounded-xl hover:bg-primary-600 transition-colors font-medium text-sm">Share a skill</button>
         </div>
       </nav>
 
       <div className="max-w-6xl mx-auto px-8 py-12">
         <section className="mb-16 text-left max-w-2xl">
           <h1 className="text-4xl font-bold tracking-tight text-ink-900 mb-4">
-            Learn something new, <br/><span className="text-primary-500">together.</span>
+            Learn and grow, <br/><span className="text-primary-500">together.</span>
           </h1>
           <p className="text-lg text-ink-500 leading-relaxed">
-            Connect with students to trade skills. No money, just shared learning and community growth.
+            Connect with students to trade skills. No pressure, just shared learning.
           </p>
           <div className="mt-8 flex gap-3">
             <div className="relative flex-grow max-w-sm">
               <input 
                 type="text" 
-                className="w-full border border-surface-200 rounded-lg focus:ring-primary-400 focus:border-primary-400 py-3 px-4 text-sm" 
+                className="w-full border border-surface-200 rounded-2xl focus:ring-primary-400 focus:border-primary-400 py-3.5 px-5 text-sm" 
                 placeholder="Search skills (e.g. Python, Pottery...)"
               />
             </div>
-            <button className="bg-surface-100 px-6 py-3 rounded-lg font-medium hover:bg-surface-200 transition-all text-sm">Browse</button>
+            <button className="bg-surface-100 px-7 py-3.5 rounded-2xl font-medium hover:bg-surface-200 transition-all text-sm">Browse</button>
           </div>
         </section>
 
@@ -70,8 +70,8 @@ export function CommunitiesScreen() {
             wantsToLearn={['Graphic Design']}
             avatar="https://picsum.photos/seed/jordanb/100/100"
           />
-          <div className="border-2 border-dashed border-surface-200 rounded-xl p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary-300 transition-colors">
-            <div className="w-12 h-12 rounded-full bg-surface-50 flex items-center justify-center mb-4 group-hover:bg-primary-50">
+          <div className="border-2 border-dashed border-surface-200 rounded-[2rem] p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary-300 transition-colors">
+            <div className="w-14 h-14 rounded-full bg-surface-50 flex items-center justify-center mb-4 group-hover:bg-primary-50">
               <Plus className="w-6 h-6 text-ink-400 group-hover:text-primary-500" />
             </div>
             <h3 className="font-medium text-ink-800">Add your profile</h3>
@@ -84,9 +84,9 @@ export function CommunitiesScreen() {
         <div className="max-w-6xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="text-sm text-ink-400">© 2026 CampusPulse. Shared learning for everyone.</div>
           <div className="flex gap-8 text-sm text-ink-500">
-            <a href="#" className="hover:text-ink-900">Privacy Policy</a>
-            <a href="#" className="hover:text-ink-900">Terms of Service</a>
-            <a href="#" className="hover:text-ink-900">Community Guidelines</a>
+            <a href="#" className="hover:text-ink-900 transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-ink-900 transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-ink-900 transition-colors">Community Guidelines</a>
           </div>
         </div>
       </footer>

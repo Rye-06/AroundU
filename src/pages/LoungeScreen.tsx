@@ -7,33 +7,34 @@ import { NearbyEvent } from '../components/NearbyEvent';
 export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className="h-full overflow-y-auto custom-scrollbar"
     >
-      <header className="max-w-5xl mx-auto pt-12 px-8">
+      <header className="max-w-5xl mx-auto pt-14 px-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-ink-900">Hello, Alex.</h2>
-            <p className="text-ink-500 mt-2">4 friends nearby · 8 events happening now</p>
+            <h2 className="text-3xl font-bold text-ink-900 tracking-tight">Good morning, Alex.</h2>
+            <p className="text-ink-500 mt-2 font-medium">4 friends nearby · 8 events happening today</p>
           </div>
           <button 
             onClick={onCreateEvent}
-            className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors shadow-md shadow-primary-200"
+            className="flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-2xl font-medium text-sm transition-all shadow-sm shadow-primary-500/20 hover:shadow-primary-500/30 hover:-translate-y-0.5"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Create Event</span>
+            <span className="hidden sm:inline">Host a gathering</span>
           </button>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-8 py-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-8 space-y-12">
+      <div className="max-w-5xl mx-auto px-8 py-10 grid grid-cols-1 lg:grid-cols-12 gap-12">
+        <div className="lg:col-span-8 space-y-14">
           <section>
             <div className="flex justify-between items-end mb-6">
-              <h3 className="text-lg font-semibold text-ink-800">Activity Feed</h3>
-              <button className="text-sm text-primary-500 hover:underline font-medium">Share a thought</button>
+              <h3 className="text-lg font-semibold text-ink-800">Campus chatter</h3>
+              <button className="text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">Drop a thought</button>
             </div>
             <div className="space-y-4">
               <FeedItem 
@@ -55,12 +56,12 @@ export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
 
           <section>
             <div className="flex justify-between items-end mb-6">
-              <h3 className="text-lg font-semibold text-ink-800">People you might enjoy meeting</h3>
-              <button className="text-sm text-primary-500 hover:underline font-medium">Explore groups</button>
+              <h3 className="text-lg font-semibold text-ink-800">Communities you might like</h3>
+              <button className="text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">See all</button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <CommunityCard 
-                title="Night Owls Study Crew"
+                title="Night Owls Study"
                 desc="Late-night study sessions and caffeine-fueled cram groups."
                 tags={['Study', 'Night']}
                 members={12}
@@ -79,9 +80,9 @@ export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
           </section>
         </div>
 
-        <aside className="lg:col-span-4 space-y-8">
+        <aside className="lg:col-span-4 space-y-10 mt-2 lg:mt-0">
           <section>
-            <h3 className="text-lg font-semibold text-ink-800 mb-6">Happening nearby</h3>
+            <h3 className="text-lg font-semibold text-ink-800 mb-6">Going on right now</h3>
             <div className="space-y-4">
               <NearbyEvent 
                 status="Live Now" 

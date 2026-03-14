@@ -23,10 +23,10 @@ export default function App() {
     <div className="flex h-screen overflow-hidden bg-surface-50">
       {/* Sidebar */}
       {currentScreen !== 'map' && (
-        <aside className="w-20 md:w-64 bg-primary-50 border-r border-primary-100 flex flex-col h-full shrink-0">
+        <aside className="w-20 md:w-64 bg-surface-50 border-r border-surface-200 flex flex-col h-full shrink-0">
           <div className="p-6">
-            <h1 className="text-xl font-bold text-primary-600 hidden md:block">CampusPulse</h1>
-            <div className="md:hidden w-8 h-8 bg-primary-500 rounded-full mx-auto" />
+            <h1 className="text-xl font-bold text-ink-800 tracking-tight hidden md:block">CampusPulse</h1>
+            <div className="md:hidden w-8 h-8 bg-primary-400 rounded-full mx-auto" />
           </div>
           
           <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -46,7 +46,7 @@ export default function App() {
               active={currentScreen === 'create'} 
               onClick={() => setCurrentScreen('create')}
               icon={<CalendarPlus className="w-6 h-6" />}
-              label="Create Event"
+              label="Host Event"
             />
             <NavButton 
               active={currentScreen === 'communities'} 
@@ -62,8 +62,8 @@ export default function App() {
             />
           </nav>
 
-          <div className="p-4 border-t border-primary-100">
-            <div className="flex items-center space-x-3 p-2">
+          <div className="p-4 border-t border-surface-200">
+            <div className="flex items-center space-x-3 p-2 rounded-2xl hover:bg-surface-100 transition-colors cursor-pointer">
               <img 
                 src="https://picsum.photos/seed/alex/100/100" 
                 alt="Alex Rivers" 
@@ -72,7 +72,7 @@ export default function App() {
               />
               <div className="hidden md:block">
                 <p className="text-sm font-semibold text-ink-800">Alex Rivers</p>
-                <p className="text-xs text-ink-500">Online now</p>
+                <p className="text-xs text-ink-500 font-medium">Online now</p>
               </div>
             </div>
           </div>

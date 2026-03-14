@@ -190,12 +190,12 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
               }}
             >
               <div className={cn(
-                "w-11 h-11 bg-white rounded-2xl flex items-center justify-center border transition-all duration-300 pointer-events-auto",
+                "w-11 h-11 bg-white rounded-3xl flex items-center justify-center border transition-all duration-500 pointer-events-auto",
                 isSelected 
-                  ? "border-primary-400 scale-105 shadow-lg shadow-primary-200/50 ring-4 ring-primary-50" 
-                  : "border-primary-100 shadow-md group-hover:scale-105"
+                  ? "border-primary-300 scale-100 shadow-[0_0_25px_rgba(112,147,136,0.4)]" 
+                  : "border-surface-200 shadow-sm shadow-primary-500/10 group-hover:scale-[1.02] group-hover:shadow-[0_0_15px_rgba(112,147,136,0.2)]"
               )}>
-                <div className="text-primary-400"><Icon className="w-5 h-5" /></div>
+                <div className={cn("transition-colors duration-300", isSelected ? "text-primary-500" : "text-primary-400")}><Icon className="w-5 h-5" /></div>
               </div>
             </div>
           </div>
@@ -260,8 +260,10 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
               }}
             >
               <div className={cn(
-                "p-1 bg-white rounded-full flex items-center justify-center shadow-md border transition-all duration-300 group-hover:border-coral-300",
-                isSelected ? "scale-105 border-coral-400 shadow-lg shadow-coral-200/50 ring-4 ring-coral-50" : "border-surface-200 group-hover:scale-105"
+                "p-1 bg-white rounded-full flex items-center justify-center border transition-all duration-500",
+                isSelected 
+                  ? "scale-100 border-coral-300 shadow-[0_0_25px_rgba(139,128,182,0.5)]" 
+                  : "border-surface-200 shadow-sm shadow-coral-500/10 group-hover:scale-[1.02] group-hover:shadow-[0_0_15px_rgba(139,128,182,0.3)] group-hover:border-coral-200"
               )}>
                 <div className="relative">
                   <img src={ice.avatar} alt={ice.author} className="w-9 h-9 rounded-full" referrerPolicy="no-referrer" />
@@ -276,21 +278,21 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
       })}
 
       {/* Expandable FAB Wrapper */}
-      <div className="absolute bottom-28 right-6 z-20 flex flex-col items-end gap-3 pointer-events-auto">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-3 pointer-events-auto">
         <AnimatePresence>
           {showFabMenu && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.9 }}
-              className="flex flex-col items-end gap-3 origin-bottom-right"
+              className="flex flex-col items-center gap-3 origin-bottom"
             >
               <button 
                 onClick={() => { setShowFabMenu(false); setShowCreateIcebreaker(true); }}
                 className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-lg border border-surface-200 hover:border-coral-200 transition-colors group"
               >
-                <span className="text-sm font-semibold text-ink-700 group-hover:text-coral-600">Post Icebreaker</span>
-                <div className="w-8 h-8 rounded-full bg-coral-50 flex items-center justify-center text-coral-500 group-hover:scale-110 transition-transform">
+                <span className="text-sm font-semibold text-ink-700 group-hover:text-coral-600 transition-colors">Drop Icebreaker</span>
+                <div className="w-8 h-8 rounded-full bg-coral-50 flex items-center justify-center text-coral-500 group-hover:scale-105 transition-transform duration-300">
                   <Sparkles className="w-4 h-4" />
                 </div>
               </button>
@@ -299,8 +301,8 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
                 onClick={() => { setShowFabMenu(false); onCreateEvent(); }}
                 className="flex items-center gap-3 bg-white px-5 py-3 rounded-full shadow-lg border border-surface-200 hover:border-primary-200 transition-colors group"
               >
-                <span className="text-sm font-semibold text-ink-700 group-hover:text-primary-600">Create Event</span>
-                <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
+                <span className="text-sm font-semibold text-ink-700 group-hover:text-primary-600 transition-colors">Host Event</span>
+                <div className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-500 group-hover:scale-105 transition-transform duration-300">
                   <Plus className="w-4 h-4" />
                 </div>
               </button>
@@ -369,18 +371,6 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages }: { onBack: (
         )}
       </AnimatePresence>
 
-      {/* Bottom Bar */}
-      <footer className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 w-full max-w-sm px-4 pointer-events-none">
-        <div className="bg-white/70 backdrop-blur-xl border border-surface-200 rounded-[2.5rem] shadow-lg flex items-center p-4 gap-4 pointer-events-auto">
-          <button className="flex-1 text-center py-2 px-4 rounded-full bg-primary-100 text-primary-600 text-sm font-medium hover:bg-primary-200 transition-colors">
-            Share Location
-          </button>
-          <div className="w-[1px] h-6 bg-surface-200" />
-          <button className="p-2 text-ink-400 hover:text-ink-600 transition-colors">
-            <Settings className="w-6 h-6" />
-          </button>
-        </div>
-      </footer>
     </motion.div>
   );
 }

@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
 import { AuthScreen } from './pages/AuthScreen';
-import { OnboardingScreen } from './pages/OnboardingScreen';
+import { OnboardingScreen, type OnboardingData } from './pages/OnboardingScreen';
 import { LoungeScreen } from './pages/LoungeScreen';
 import { MapScreen } from './pages/MapScreen';
 import { CreateEventScreen } from './pages/CreateEventScreen';
@@ -27,7 +27,7 @@ import { EventNotificationStack, type EventToast } from './components/EventNotif
 import { AroundUEmblem, AroundULogo } from './components/AroundULogo';
 import { SplashScreen } from './components/SplashScreen';
 import { ConstellationBackground } from './components/ConstellationBackground';
-import { createEvent } from './lib/api';
+import { createEvent, createUserAggregate, type CreateUserAggregateResponse as User } from './lib/api';
 
 type AppMapEvent = {
   id: string;
@@ -66,6 +66,8 @@ export default function App() {
   const [eventNotifications, setEventNotifications] = useState<EventToast[]>([]);
   const [userMapEvents, setUserMapEvents] = useState<AppMapEvent[]>([]);
   const [mapFocusEventId, setMapFocusEventId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [authName, setAuthName] = useState<string>('');
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 1700);
@@ -110,6 +112,8 @@ export default function App() {
     const top = 30 + ((spreadIndex * 13) % 40);
     const left = 28 + ((spreadIndex * 17) % 44);
     const nextId = `user-event-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+
 
     return {
       id: nextId,
@@ -165,11 +169,44 @@ export default function App() {
 
   // Full-screen flows (no sidebar)
   if (currentScreen === 'auth') {
-    return <AuthScreen onAuth={() => setCurrentScreen('onboarding')} />;
+    return <AuthScreen onAuth={(name) => {
+      setAuthName(name);
+      setCurrentScreen('onboarding');
+    }} />;
   }
 
   if (currentScreen === 'onboarding') {
-    return <OnboardingScreen onComplete={() => setCurrentScreen('lounge')} />;
+    return <OnboardingScreen onComplete={async (onboardingData: OnboardingData) => {
+      const payload = {
+        name: authName || 'Student',
+        bio: `Hi! I'm interested in ${onboardingData.interests[0]} and meeting new people.`,
+        profile: {
+          year_of_study: 1,
+          major: 'Undeclared',
+          mbti: 'UNKNOWN',
+          mood: 'good',
+          fitness: 'active',
+          extroversion: onboardingData.comfort.includes('small') ? 2 : 4,
+          group_preference: onboardingData.comfort[0] || 'medium',
+          energy_level: 'moderate'
+        },
+        classes: [],
+        clubs: [],
+        interests: onboardingData.interests
+      };
+      //Trying my best here to stay sane
+      // Creates the user, passed as a function we created into onboarding screen
+
+      try {
+        const createdUser = await createUserAggregate(payload);
+        console.log('User created successfully:', createdUser);
+        setUser(createdUser);
+      } catch (err) {
+        console.error('Network error during user creation:', err);
+      }
+
+      setCurrentScreen('lounge');
+    }} />;
   }
 
   return (

@@ -63,61 +63,7 @@ export function CreateEventScreen({ onEventPosted }: { onEventPosted?: (event: P
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (isSubmitting) {
-      return;
-    }
-
-    const categoryLabel = eventCategories.find(cat => cat.value === form.category)?.label ?? 'Event';
-    const subtitle = form.description.trim()
-      ? form.description.trim().slice(0, 90)
-      : `${categoryLabel} meetup nearby`;
-    const locationLabel = form.building
-      ? `${form.building}${form.room ? ` · ${form.room}` : ''}`
-      : form.customLocation.trim() || undefined;
-    const eventCoords = BUILDING_COORDINATES[form.building] || { latitude: 43.6632, longitude: -79.3959 };
-    const now = Date.now();
-    const startsInOffsets: Record<string, number> = {
-      now: 0,
-      '15min': 15,
-      '30min': 30,
-      '1hr': 60,
-    };
-    const offsetMinutes = startsInOffsets[form.startsIn] ?? 0;
-
-    setSubmitError(null);
-    setIsSubmitting(true);
-
-    try {
-      await createEvent({
-        title: form.title.trim(),
-        description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
-        event_type: categoryLabel,
-        interest_tag: form.tags,
-        skill_level_required: 'All',
-        latitude: eventCoords.latitude,
-        longitude: eventCoords.longitude,
-        event_time: new Date(now + offsetMinutes * 60 * 1000).toISOString(),
-        max_participants: form.maxAttendees,
-      });
-
-      onEventPosted?.({
-        title: form.title.trim(),
-        subtitle,
-        description: form.description.trim() || `${categoryLabel} meetup hosted on CampusPulse.`,
-        location: locationLabel,
-        interestTag: form.tags[0],
-        category: form.category,
-      });
-
-      setSubmitted(true);
-      setTimeout(() => setSubmitted(false), 4000);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not create event. Please try again.';
-      setSubmitError(message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    console.log("Form Submitted:", form);
   }
 
   const locationDisplay = form.building 

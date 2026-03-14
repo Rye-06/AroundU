@@ -5,7 +5,7 @@ import { cn } from '../lib/utils';
 import { ConstellationBackground } from '../components/ConstellationBackground';
 import { AroundULogo } from '../components/AroundULogo';
 
-export function AuthScreen({ onAuth }: { onAuth: () => void }) {
+export function AuthScreen({ onAuth }: { onAuth: (name: string) => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signup');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
@@ -15,7 +15,9 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    onAuth();
+    // Pass the name up so we can use it to build the single request later
+    const fallbackName = email.split('@')[0] || 'Student';
+    onAuth(mode === 'signup' && name ? name : fallbackName);
   };
 
   return (

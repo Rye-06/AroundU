@@ -29,11 +29,19 @@ const STEPS = [
   { title: "Where do you like to be?", subtitle: "We'll show you what's happening in places you're comfortable." },
 ];
 
-export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
+export type OnboardingData = {
+  interests: string[];
+  comfort: string[];
+  location: string;
+};
+
+export function OnboardingScreen({ onComplete }: { onComplete: (data: OnboardingData) => void }) {
   const [step, setStep] = useState(0);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [selectedComfort, setSelectedComfort] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
+
+  console.log(selectedInterests);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests(prev =>
@@ -54,8 +62,15 @@ export function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
     : selectedLocation !== '';
 
   const handleNext = () => {
-    if (step < 2) setStep(step + 1);
-    else onComplete();
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      onComplete({
+        interests: selectedInterests,
+        comfort: selectedComfort,
+        location: selectedLocation
+      });
+    }
   };
 
   return (

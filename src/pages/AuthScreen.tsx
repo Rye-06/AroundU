@@ -65,7 +65,7 @@ export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) =>
             <button
               onClick={() => setMode('signup')}
               className={cn(
-                "btn-tactile btn-tactile-soft flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
+                "btn-tactile btn-tactile-soft btn-tactile-slow-press flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
                 mode === 'signup'
                   ? "bg-white text-ink-900 shadow-sm"
                   : "text-ink-400 hover:text-ink-600"
@@ -76,7 +76,7 @@ export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) =>
             <button
               onClick={() => setMode('signin')}
               className={cn(
-                "btn-tactile btn-tactile-soft flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
+                "btn-tactile btn-tactile-soft btn-tactile-slow-press flex-1 cursor-pointer rounded-xl py-2.5 text-sm font-semibold",
                 mode === 'signin'
                   ? "bg-white text-ink-900 shadow-sm"
                   : "text-ink-400 hover:text-ink-600"
@@ -142,7 +142,7 @@ export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) =>
 
             <button
               type="submit"
-              className="btn-tactile btn-tactile-solid mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3.5 font-semibold text-white shadow-sm shadow-primary-500/20 hover:bg-primary-600"
+              className="btn-tactile btn-tactile-solid btn-tactile-slow-press mt-6 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3.5 font-semibold text-white shadow-sm shadow-primary-500/20 hover:bg-primary-600"
             >
               <span>{mode === 'signup' ? 'Get started' : 'Welcome back'}</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />

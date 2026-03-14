@@ -6,7 +6,25 @@ import { NearbyEvent } from '../components/NearbyEvent';
 import { ConstellationDivider } from '../components/ConstellationDivider';
 import { ConstellationHero } from '../components/ConstellationHero';
 
-export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
+type IcebreakerPost = {
+  id: string;
+  authorName: string;
+  content: string;
+  createdLabel: string;
+  avatarUrl: string;
+};
+
+export function LoungeScreen({
+  onCreateEvent,
+  icebreakers,
+  onDropThought,
+  onOpenMessages,
+}: {
+  onCreateEvent: () => void;
+  icebreakers: IcebreakerPost[];
+  onDropThought: () => void;
+  onOpenMessages: () => void;
+}) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -23,24 +41,21 @@ export function LoungeScreen({ onCreateEvent }: { onCreateEvent: () => void }) {
         <div className="lg:col-span-8 space-y-14">
           <section>
             <div className="flex justify-between items-end mb-6">
-              <h3 className="text-lg font-semibold text-ink-800">Campus chatter</h3>
-              <button className="text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors">Drop a thought</button>
+              <h3 className="text-lg font-semibold text-ink-800">Nearby icebreakers</h3>
+              <button onClick={onDropThought} className="btn-tactile btn-tactile-soft text-sm text-primary-500 hover:text-primary-600 font-medium transition-colors rounded-lg px-2 py-1">Drop a thought</button>
             </div>
             <div className="space-y-4">
-              <FeedItem 
-                name="Jordan Chen" 
-                time="20m ago" 
-                content="Studying at the library, feel free to join! I'm in the south wing near the windows. ☕️"
-                avatar="https://picsum.photos/seed/jordan/100/100"
-                action="Wave hello"
-              />
-              <FeedItem 
-                name="Maya Patel" 
-                time="1h ago" 
-                content="Found a great spot for sketching near the fountain today. The light is perfect."
-                avatar="https://picsum.photos/seed/maya/100/100"
-                action="Send love"
-              />
+              {icebreakers.map(post => (
+                <FeedItem
+                  key={post.id}
+                  name={post.authorName}
+                  time={post.createdLabel}
+                  content={post.content}
+                  avatar={post.avatarUrl}
+                  action="Reply in messages"
+                  onAction={onOpenMessages}
+                />
+              ))}
             </div>
           </section>
 

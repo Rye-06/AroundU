@@ -1,101 +1,366 @@
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
-import { SkillCard } from '../components/SkillCard';
-import { ConstellationDivider } from '../components/ConstellationDivider';
+import { Bookmark, MessageSquare, SlidersHorizontal, UserRound } from 'lucide-react';
 import { ConstellationBackground } from '../components/ConstellationBackground';
 
+const AI_MATCH_RESULT: Record<string, number> = {
+  alex_rivers: 0.95,
+  maya_patel: 0.93,
+  jordan_chen: 0.91,
+  sam_wilson: 0.9,
+  nina_lee: 0.88,
+  chris_kim: 0.84,
+};
+
+type GroupPreference = 'solo' | 'small_group' | 'medium_group' | 'large_group';
+type EnergyLevel = 'low' | 'moderate' | 'high';
+
+type BuddyProfile = {
+  username: string;
+  name: string;
+  avatar: string;
+  year: number;
+  major: string;
+  interests: string[];
+  sharedClasses: string[];
+  sharedClubs: string[];
+  groupPreference: GroupPreference;
+  energyLevel: EnergyLevel;
+  aiReason: string;
+};
+
+type MatchEntry = BuddyProfile & {
+  rating: number;
+  fitLabel: 'Great match' | 'Good fit';
+};
+
+const BUDDY_DIRECTORY: BuddyProfile[] = [
+  {
+    username: 'alex_rivers',
+    name: 'Alex Rivers',
+    avatar: 'https://picsum.photos/seed/alexbuddy/120/120',
+    year: 1,
+    major: 'Computer Science',
+    interests: ['volleyball', 'gym', 'anime'],
+    sharedClasses: ['CSC108'],
+    sharedClubs: ['AI Club'],
+    groupPreference: 'medium_group',
+    energyLevel: 'moderate',
+    aiReason: 'You both like volleyball and gym.',
+  },
+  {
+    username: 'maya_patel',
+    name: 'Maya Patel',
+    avatar: 'https://picsum.photos/seed/mayabuddy/120/120',
+    year: 1,
+    major: 'Computer Science',
+    interests: ['coffee chats', 'anime', 'design'],
+    sharedClasses: ['MAT137'],
+    sharedClubs: ['Volleyball Club'],
+    groupPreference: 'small_group',
+    energyLevel: 'moderate',
+    aiReason: 'Similar schedules and study habits.',
+  },
+  {
+    username: 'jordan_chen',
+    name: 'Jordan Chen',
+    avatar: 'https://picsum.photos/seed/jordanbuddy/120/120',
+    year: 1,
+    major: 'Statistics',
+    interests: ['gym', 'running', 'coding'],
+    sharedClasses: ['CSC108'],
+    sharedClubs: [],
+    groupPreference: 'small_group',
+    energyLevel: 'high',
+    aiReason: 'Both first-years in STEM with active routines.',
+  },
+  {
+    username: 'sam_wilson',
+    name: 'Sam Wilson',
+    avatar: 'https://picsum.photos/seed/sambuddy/120/120',
+    year: 2,
+    major: 'Math',
+    interests: ['study groups', 'gaming', 'anime'],
+    sharedClasses: ['MAT137'],
+    sharedClubs: ['AI Club'],
+    groupPreference: 'medium_group',
+    energyLevel: 'low',
+    aiReason: 'You share overlap in anime and collaborative studying.',
+  },
+  {
+    username: 'nina_lee',
+    name: 'Nina Lee',
+    avatar: 'https://picsum.photos/seed/ninabuddy/120/120',
+    year: 1,
+    major: 'Computer Engineering',
+    interests: ['gym', 'coding', 'music'],
+    sharedClasses: [],
+    sharedClubs: ['Volleyball Club'],
+    groupPreference: 'large_group',
+    energyLevel: 'high',
+    aiReason: 'Strong overlap in campus activities and social energy.',
+  },
+];
+
+function prettyLabel(value: string) {
+  return value
+    .replaceAll('_', ' ')
+    .split(' ')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export function CommunitiesScreen() {
+  const [yearFilter, setYearFilter] = useState<'all' | number>('all');
+  const [interestFilter, setInterestFilter] = useState<'all' | string>('all');
+  const [groupFilter, setGroupFilter] = useState<'all' | GroupPreference>('all');
+  const [energyFilter, setEnergyFilter] = useState<'all' | EnergyLevel>('all');
+
+  const allInterests = useMemo(() => {
+    const values = new Set<string>();
+    BUDDY_DIRECTORY.forEach(profile => {
+      profile.interests.forEach(interest => values.add(interest));
+    });
+    return Array.from(values).sort();
+  }, []);
+
+  const rankedMatches = useMemo<MatchEntry[]>(() => {
+    // Required pipeline: threshold filter first, then descending sort, then sectioning.
+    const filteredByThreshold = Object.entries(AI_MATCH_RESULT)
+      .filter(([, rating]) => rating >= 0.86)
+      .sort((a, b) => b[1] - a[1]);
+
+    const merged = filteredByThreshold
+      .map(([username, rating]) => {
+        const profile = BUDDY_DIRECTORY.find(candidate => candidate.username === username);
+        if (!profile) {
+          return null;
+        }
+
+        return {
+          ...profile,
+          rating,
+          fitLabel: rating >= 0.92 ? 'Great match' : 'Good fit',
+        } as MatchEntry;
+      })
+      .filter((match): match is MatchEntry => Boolean(match));
+
+    return merged.filter(match => {
+      if (yearFilter !== 'all' && match.year !== yearFilter) {
+        return false;
+      }
+
+      if (interestFilter !== 'all' && !match.interests.includes(interestFilter)) {
+        return false;
+      }
+
+      if (groupFilter !== 'all' && match.groupPreference !== groupFilter) {
+        return false;
+      }
+
+      if (energyFilter !== 'all' && match.energyLevel !== energyFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [energyFilter, groupFilter, interestFilter, yearFilter]);
+
+  const topMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.92), [rankedMatches]);
+  const goodMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.86 && match.rating < 0.92), [rankedMatches]);
+
+  const isEmpty = rankedMatches.length === 0;
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.98 }}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.99 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 1.02 }}
-      className="h-full overflow-y-auto custom-scrollbar relative"
+      exit={{ opacity: 0, scale: 1.01 }}
+      className="relative h-full overflow-y-auto custom-scrollbar"
     >
       <ConstellationBackground />
 
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-surface-200">
-        <div className="max-w-6xl mx-auto px-8 h-16 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 border-b border-surface-200 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8">
           <div className="flex items-center gap-8 text-sm font-medium text-ink-500">
             <a href="#" className="text-ink-900">Find a Buddy</a>
-            <a href="#" className="hover:text-ink-900 transition-colors">Shared Learning</a>
-            <a href="#" className="hover:text-ink-900 transition-colors">Communities</a>
+            <a href="#" className="transition-colors hover:text-ink-900">Shared Learning</a>
+            <a href="#" className="transition-colors hover:text-ink-900">Communities</a>
           </div>
-          <button className="bg-primary-500 text-white px-5 py-2.5 rounded-xl hover:bg-primary-600 transition-colors font-medium text-sm">Share a skill</button>
+          <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-ink-600">
+            Invite a friend
+          </button>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-8 py-12">
-        <section className="mb-16 text-left max-w-2xl">
-          <h1 className="text-4xl font-bold tracking-tight text-ink-900 mb-4">
-            Learn and grow, <br/><span className="text-primary-500">together.</span>
-          </h1>
-          <p className="text-lg text-ink-500 leading-relaxed">
-            Connect with students to trade skills. No pressure, just shared learning.
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-10 md:px-8 md:py-12">
+        <section className="max-w-3xl">
+          <h1 className="text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">Find a Buddy</h1>
+          <p className="mt-3 text-base leading-relaxed text-ink-500">
+            Calm, AI-powered recommendations based on shared interests, study rhythm, and social preferences.
           </p>
-          <div className="mt-8 flex gap-3">
-            <div className="relative flex-grow max-w-sm">
-              <input 
-                type="text" 
-                className="w-full border border-surface-200 rounded-2xl focus:ring-primary-400 focus:border-primary-400 py-3.5 px-5 text-sm" 
-                placeholder="Search skills (e.g. Python, Pottery...)"
-              />
-            </div>
-            <button className="bg-surface-100 px-7 py-3.5 rounded-2xl font-medium hover:bg-surface-200 transition-all text-sm">Browse</button>
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-surface-200 bg-white/90 p-4 shadow-sm md:p-5">
+          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-500">
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Refine suggestions</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <select
+              value={yearFilter}
+              onChange={e => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="all">All years</option>
+              <option value={1}>Year 1</option>
+              <option value={2}>Year 2</option>
+              <option value={3}>Year 3</option>
+              <option value={4}>Year 4</option>
+            </select>
+
+            <select
+              value={interestFilter}
+              onChange={e => setInterestFilter(e.target.value as 'all' | string)}
+              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="all">All interests</option>
+              {allInterests.map(interest => (
+                <option key={interest} value={interest}>{prettyLabel(interest)}</option>
+              ))}
+            </select>
+
+            <select
+              value={groupFilter}
+              onChange={e => setGroupFilter(e.target.value as 'all' | GroupPreference)}
+              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="all">All group styles</option>
+              <option value="solo">Solo</option>
+              <option value="small_group">Small group</option>
+              <option value="medium_group">Medium group</option>
+              <option value="large_group">Large group</option>
+            </select>
+
+            <select
+              value={energyFilter}
+              onChange={e => setEnergyFilter(e.target.value as 'all' | EnergyLevel)}
+              className="rounded-xl border border-surface-200 bg-surface-50 px-3 py-2.5 text-sm text-ink-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            >
+              <option value="all">All energy levels</option>
+              <option value="low">Low</option>
+              <option value="moderate">Moderate</option>
+              <option value="high">High</option>
+            </select>
           </div>
         </section>
 
-        <ConstellationDivider className="mb-12 mt-4" />
+        {isEmpty ? (
+          <section className="mt-8 rounded-[2rem] border border-surface-200 bg-white p-10 text-center shadow-sm">
+            <h3 className="text-xl font-semibold text-ink-800">We&apos;re finding your people.</h3>
+            <p className="mt-2 text-sm text-ink-500">Try updating your interests. More matches will appear soon.</p>
+          </section>
+        ) : (
+          <>
+            <section className="mt-10">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-ink-900">Top Matches</h3>
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Great match</p>
+              </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-          <SkillCard 
-            name="Sarah Chen"
-            role="Design Student · 2km away"
-            canHelp={['UI/UX Design', 'Pottery']}
-            wantsToLearn={['Python', 'Cooking']}
-            avatar="https://picsum.photos/seed/sarah/100/100"
-          />
-          <SkillCard 
-            name="Marcus Wright"
-            role="Software Engineer · 5km away"
-            canHelp={['Python', 'React']}
-            wantsToLearn={['Guitar', 'Photography']}
-            avatar="https://picsum.photos/seed/marcus/100/100"
-          />
-          <SkillCard 
-            name="Elena Rossi"
-            role="Chef · 1km away"
-            canHelp={['Italian Cooking', 'Gardening']}
-            wantsToLearn={['Web Basics', 'Yoga']}
-            avatar="https://picsum.photos/seed/elena/100/100"
-          />
-          <SkillCard 
-            name="Jordan Blake"
-            role="Music Producer · 10km away"
-            canHelp={['Audio Editing', 'Piano']}
-            wantsToLearn={['Graphic Design']}
-            avatar="https://picsum.photos/seed/jordanb/100/100"
-          />
-          <div className="border-2 border-dashed border-surface-200 rounded-[2rem] p-6 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-primary-300 transition-colors">
-            <div className="w-14 h-14 rounded-full bg-surface-50 flex items-center justify-center mb-4 group-hover:bg-primary-50">
-              <Plus className="w-6 h-6 text-ink-400 group-hover:text-primary-500" />
-            </div>
-            <h3 className="font-medium text-ink-800">Add your profile</h3>
-            <p className="text-sm text-ink-500 mt-1">Join the community and start exchanging</p>
+              {topMatches.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {topMatches.map(match => (
+                    <MatchCard key={match.username} match={match} compact={false} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-surface-200 bg-white p-6 text-sm text-ink-500">
+                  No top matches with current filters yet.
+                </div>
+              )}
+            </section>
+
+            <section className="mt-10 pb-10">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-ink-900">Good Matches</h3>
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Good fit</p>
+              </div>
+
+              {goodMatches.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {goodMatches.map(match => (
+                    <MatchCard key={match.username} match={match} compact />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-surface-200 bg-white p-5 text-sm text-ink-500">
+                  No good matches with current filters right now.
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function MatchCard({ match, compact }: { match: MatchEntry; compact: boolean }) {
+  return (
+    <article
+      className={[
+        'rounded-[1.6rem] border border-surface-200 bg-white shadow-sm transition-all',
+        compact ? 'p-4' : 'p-5 md:p-6',
+      ].join(' ')}
+    >
+      <div className="flex items-start gap-3">
+        <img
+          src={match.avatar}
+          alt={match.name}
+          className={compact ? 'h-12 w-12 rounded-full object-cover' : 'h-14 w-14 rounded-full object-cover'}
+          referrerPolicy="no-referrer"
+        />
+
+        <div className="flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={compact ? 'text-base font-semibold text-ink-900' : 'text-lg font-semibold text-ink-900'}>{match.name}</h4>
+            <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700">{match.fitLabel}</span>
           </div>
+
+          <p className="mt-0.5 text-xs text-ink-500">Year {match.year} · {match.major}</p>
         </div>
       </div>
 
-      <footer className="border-t border-surface-200 mt-20 py-12">
-        <div className="max-w-6xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-sm text-ink-400">© 2026 CampusPulse. Shared learning for everyone.</div>
-          <div className="flex gap-8 text-sm text-ink-500">
-            <a href="#" className="hover:text-ink-900 transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-ink-900 transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-ink-900 transition-colors">Community Guidelines</a>
-          </div>
-        </div>
-      </footer>
-    </motion.div>
+      <p className={compact ? 'mt-3 text-xs text-ink-600' : 'mt-3 text-sm text-ink-600'}>{match.aiReason}</p>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {match.interests.slice(0, compact ? 2 : 3).map(interest => (
+          <span key={interest} className="rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[11px] font-medium text-primary-700">
+            {prettyLabel(interest)}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-2 space-y-1 text-[11px] text-ink-500">
+        {match.sharedClasses.length > 0 && <p>Shared classes: {match.sharedClasses.join(', ')}</p>}
+        {match.sharedClubs.length > 0 && <p>Shared clubs: {match.sharedClubs.join(', ')}</p>}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button className="btn-tactile btn-tactile-solid rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-600">
+          <MessageSquare className="mr-1 inline h-3.5 w-3.5" />
+          Say hi
+        </button>
+        <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 px-3 py-2 text-xs font-semibold text-ink-600">
+          <UserRound className="mr-1 inline h-3.5 w-3.5" />
+          View profile
+        </button>
+        <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 px-3 py-2 text-xs font-semibold text-ink-600">
+          <Bookmark className="mr-1 inline h-3.5 w-3.5" />
+          Save for later
+        </button>
+      </div>
+    </article>
   );
 }

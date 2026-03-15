@@ -252,6 +252,7 @@ function buildExpandedEventCardHtml({ event, joinState, currentUserId }) {
   const title = escapeHtml(event.title || 'Campus event');
   const description = escapeHtml(event.description || event.preview || 'Tap join to be part of this event and chat.');
   const category = escapeHtml(event.category || 'Event');
+  const categoryDotHtml = buildCategoryDotHtml(event.category);
   const timeLabel = escapeHtml(formatEventTime(event.timeLeft || event.event_time));
   const attendees = Number(event.attendees || 0);
   const maxAttendees = Number(event.maxAttendees || 8);
@@ -289,7 +290,10 @@ function buildExpandedEventCardHtml({ event, joinState, currentUserId }) {
     html: `
       <div style="min-width:285px;max-width:320px;padding:8px 6px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;animation:aroundu-expand .22s ease-out;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-          <span style="display:inline-block;padding:4px 9px;border-radius:999px;background:#f3eee3;color:#647e68;font-size:11px;font-weight:700;">${category}</span>
+          <div style="display:flex;align-items:center;gap:7px;">
+            ${categoryDotHtml}
+            <span style="display:inline-block;padding:4px 9px;border-radius:999px;background:#f3eee3;color:#647e68;font-size:11px;font-weight:700;">${category}</span>
+          </div>
           <span style="font-size:11px;color:#717a7a;">${timeLabel}</span>
         </div>
 
@@ -308,6 +312,56 @@ function buildExpandedEventCardHtml({ event, joinState, currentUserId }) {
           ${openChatHtml}
         </div>
         ${statusNote}
+      </div>
+    `,
+  };
+}
+
+function buildCategoryDotHtml(category) {
+  const categoryType = getCategoryType(category);
+  const color = CATEGORY_STYLE[categoryType] ?? CATEGORY_STYLE.other;
+
+  return `
+    <span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:${color.fill};box-shadow:0 0 0 2px rgba(252,249,242,0.92);"></span>
+  `;
+}
+
+function buildIcebreakerReplyCardHtml({ event, replyState, currentUserId }) {
+  const eventIdSafe = toDomSafeId(event.id || 'icebreaker');
+  const inputId = `icebreaker-input-${eventIdSafe}`;
+  const sendButtonId = `icebreaker-send-${eventIdSafe}`;
+  const openChatButtonId = `icebreaker-open-chat-${eventIdSafe}`;
+
+  const title = escapeHtml(event.title || 'Icebreaker Post');
+  const description = escapeHtml(event.description || event.preview || 'Start a conversation nearby.');
+  const sending = replyState?.status === 'sending';
+  const sent = replyState?.status === 'sent';
+  const disabled = !currentUserId || sending;
+
+  const helperText = !currentUserId
+    ? 'Sign in to reply.'
+    : sent
+      ? 'Message sent. You can continue in chat.'
+      : 'Reply to start a conversation.';
+
+  return {
+    inputId,
+    sendButtonId,
+    openChatButtonId,
+    html: `
+      <div style="min-width:290px;max-width:330px;padding:8px 6px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;animation:aroundu-expand .22s ease-out;">
+        <span style="display:inline-block;padding:4px 9px;border-radius:999px;background:#ecfbf6;color:#0f766e;font-size:11px;font-weight:700;">Icebreaker</span>
+        <h3 style="margin:8px 0 0;font-size:15px;line-height:1.3;color:#1a1e1e;font-weight:800;">${title}</h3>
+        <p style="margin:6px 0 0;color:#525c5c;font-size:12px;line-height:1.45;">${description}</p>
+
+        <textarea id="${inputId}" placeholder="Send a quick reply..." style="margin-top:10px;width:100%;min-height:72px;resize:none;border:1px solid #e7dfcf;border-radius:12px;background:#fcf9f2;padding:8px 10px;font-size:12px;color:#3f4747;outline:none;" ${disabled ? 'disabled' : ''}></textarea>
+
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          <button id="${sendButtonId}" ${disabled ? 'disabled' : ''} style="flex:1;border:0;background:${disabled ? '#d7ceb9' : '#0f766e'};color:white;border-radius:12px;padding:10px 10px;font-size:12px;font-weight:800;cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '0.9' : '1'};">${sending ? 'Sending...' : sent ? 'Sent' : 'Send message'}</button>
+          <button id="${openChatButtonId}" style="border:1px solid #e7dfcf;background:#fcf9f2;color:#3f4747;border-radius:12px;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer;">Open chat</button>
+        </div>
+
+        <p style="margin:8px 0 0;color:#647e68;font-size:11px;font-weight:600;">${escapeHtml(helperText)}</p>
       </div>
     `,
   };
@@ -418,6 +472,7 @@ export default function CampusMap({
   const userPulseIntervalRef = useRef(null);
   const userMarkerStateRef = useRef({ active: false, pulsePhase: false });
   const [eventJoinState, setEventJoinState] = useState({});
+  const [icebreakerReplyState, setIcebreakerReplyState] = useState({});
   const [isMapReady, setIsMapReady] = useState(false);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -535,6 +590,93 @@ export default function CampusMap({
 
       const openInfo = () => {
         setMarkerActiveState(markerEntriesRef.current, event.id);
+
+        if (getMarkerKind(event) === 'icebreaker') {
+          const card = buildIcebreakerReplyCardHtml({
+            event,
+            replyState: icebreakerReplyState[event.id],
+            currentUserId,
+          });
+
+          infoWindowRef.current.setContent(card.html);
+          infoWindowRef.current.open({
+            map: mapRef.current,
+            anchor: marker,
+          });
+
+          window.google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+            const sendButton = document.getElementById(card.sendButtonId);
+            const input = document.getElementById(card.inputId);
+            const openChatButton = document.getElementById(card.openChatButtonId);
+
+            if (openChatButton) {
+              openChatButton.addEventListener('click', () => {
+                if (typeof onOpenChat === 'function') {
+                  onOpenChat();
+                }
+              });
+            }
+
+            if (sendButton && input) {
+              sendButton.addEventListener('click', () => {
+                const text = String(input.value || '').trim();
+                if (!text || !currentUserId) {
+                  setIcebreakerReplyState(prev => ({
+                    ...prev,
+                    [event.id]: { status: 'error', message: !currentUserId ? 'Sign in to reply.' : 'Type a message first.' },
+                  }));
+
+                  const errorCard = buildIcebreakerReplyCardHtml({
+                    event,
+                    replyState: { status: 'error' },
+                    currentUserId,
+                  });
+                  infoWindowRef.current.setContent(errorCard.html);
+                  return;
+                }
+
+                setIcebreakerReplyState(prev => ({
+                  ...prev,
+                  [event.id]: { status: 'sending' },
+                }));
+
+                const sendingCard = buildIcebreakerReplyCardHtml({
+                  event,
+                  replyState: { status: 'sending' },
+                  currentUserId,
+                });
+                infoWindowRef.current.setContent(sendingCard.html);
+
+                window.setTimeout(() => {
+                  setIcebreakerReplyState(prev => ({
+                    ...prev,
+                    [event.id]: { status: 'sent' },
+                  }));
+
+                  const sentCard = buildIcebreakerReplyCardHtml({
+                    event,
+                    replyState: { status: 'sent' },
+                    currentUserId,
+                  });
+                  infoWindowRef.current.setContent(sentCard.html);
+
+                  window.google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+                    const openChatAfterSend = document.getElementById(sentCard.openChatButtonId);
+                    if (openChatAfterSend) {
+                      openChatAfterSend.addEventListener('click', () => {
+                        if (typeof onOpenChat === 'function') {
+                          onOpenChat();
+                        }
+                      });
+                    }
+                  });
+                }, 260);
+              });
+            }
+          });
+
+          return;
+        }
 
         if (getMarkerKind(event) !== 'event') {
           infoWindowRef.current.setContent(buildInfoCardHtml(event));
@@ -694,7 +836,7 @@ export default function CampusMap({
         userMarkerRef.current = null;
       }
     };
-  }, [currentUserId, eventJoinState, focusEventId, isMapReady, markerEvents, onFocusHandled, onJoinEvent, onOpenChat]);
+  }, [currentUserId, eventJoinState, focusEventId, icebreakerReplyState, isMapReady, markerEvents, onFocusHandled, onJoinEvent, onOpenChat]);
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current || !infoWindowRef.current) {

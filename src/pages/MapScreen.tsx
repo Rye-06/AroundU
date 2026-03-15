@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CalendarPlus, Home, MessageSquare, Plus, Search } from 'lucide-react';
+import { CalendarPlus, Home, MessageSquare, Plus } from 'lucide-react';
 import CampusMap from '../components/map/CampusMap';
 import { mapEvents } from '../data/mockData';
 import { createEventParticipant, fetchEventsForMap, getEventParticipants, type MapEventPayload } from '../lib/api';
@@ -303,23 +303,6 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebr
             <span className="text-surface-300">|</span>
             <h1 className="text-sm font-semibold text-ink-700 sm:text-base">Campus Map</h1>
           </div>
-
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={onGoToMessages}
-              className="rounded-full border border-surface-200 bg-white/88 p-2.5 text-ink-500 shadow-sm backdrop-blur-md transition-colors hover:text-ink-800"
-              aria-label="Open messages"
-            >
-              <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-            <button
-              type="button"
-              className="rounded-full border border-surface-200 bg-white/88 p-2.5 text-ink-500 shadow-sm backdrop-blur-md transition-colors hover:text-ink-800"
-              aria-label="Search nearby events"
-            >
-              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-          </div>
         </div>
       </header>
 
@@ -359,7 +342,7 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebr
                     disabled={!icebreakerDraft.trim()}
                     className="btn-tactile btn-tactile-solid rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Post icebreaker
+                    Say something
                   </button>
                 </div>
               </motion.div>
@@ -390,7 +373,7 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebr
                   className="inline-flex items-center gap-2 rounded-full border border-primary-300/60 bg-primary-500 px-4 py-2.5 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(123,151,128,0.32)] transition-colors hover:bg-primary-600"
                 >
                   <CalendarPlus className="h-3.5 w-3.5" />
-                  Host Event
+                  Start a hangout
                 </button>
               </motion.div>
             )}

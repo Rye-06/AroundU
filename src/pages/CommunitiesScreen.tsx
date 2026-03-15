@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark, MessageSquare, SlidersHorizontal, UserRound } from 'lucide-react';
+import { MessageSquare, Send } from 'lucide-react';
 import { ConstellationBackground } from '../components/ConstellationBackground';
-import { AnimatedSelect } from '../components/AnimatedSelect';
 
 const AI_MATCH_RESULT: Record<string, number> = {
   alex_rivers: 0.95,
@@ -112,19 +111,6 @@ function prettyLabel(value: string) {
 }
 
 export function CommunitiesScreen() {
-  const [yearFilter, setYearFilter] = useState<'all' | number>('all');
-  const [interestFilter, setInterestFilter] = useState<'all' | string>('all');
-  const [groupFilter, setGroupFilter] = useState<'all' | GroupPreference>('all');
-  const [energyFilter, setEnergyFilter] = useState<'all' | EnergyLevel>('all');
-
-  const allInterests = useMemo(() => {
-    const values = new Set<string>();
-    BUDDY_DIRECTORY.forEach(profile => {
-      profile.interests.forEach(interest => values.add(interest));
-    });
-    return Array.from(values).sort();
-  }, []);
-
   const rankedMatches = useMemo<MatchEntry[]>(() => {
     // Required pipeline: threshold filter first, then descending sort, then sectioning.
     const filteredByThreshold = Object.entries(AI_MATCH_RESULT)
@@ -146,26 +132,8 @@ export function CommunitiesScreen() {
       })
       .filter((match): match is MatchEntry => Boolean(match));
 
-    return merged.filter(match => {
-      if (yearFilter !== 'all' && match.year !== yearFilter) {
-        return false;
-      }
-
-      if (interestFilter !== 'all' && !match.interests.includes(interestFilter)) {
-        return false;
-      }
-
-      if (groupFilter !== 'all' && match.groupPreference !== groupFilter) {
-        return false;
-      }
-
-      if (energyFilter !== 'all' && match.energyLevel !== energyFilter) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [energyFilter, groupFilter, interestFilter, yearFilter]);
+    return merged;
+  }, []);
 
   const topMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.92), [rankedMatches]);
   const goodMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.86 && match.rating < 0.92), [rankedMatches]);
@@ -183,14 +151,7 @@ export function CommunitiesScreen() {
 
       <nav className="sticky top-0 z-50 border-b border-surface-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 md:px-8">
-          <div className="flex items-center gap-8 text-sm font-medium text-ink-500">
-            <a href="#" className="text-ink-900">Find a Buddy</a>
-            <a href="#" className="transition-colors hover:text-ink-900">Shared Learning</a>
-            <a href="#" className="transition-colors hover:text-ink-900">Communities</a>
-          </div>
-          <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-ink-600">
-            Invite a friend
-          </button>
+          <div className="text-sm font-medium text-ink-900">Find a Buddy</div>
         </div>
       </nav>
 
@@ -200,58 +161,6 @@ export function CommunitiesScreen() {
           <p className="mt-3 text-base leading-relaxed text-ink-500">
             Calm, AI-powered recommendations based on shared interests, study rhythm, and social preferences.
           </p>
-        </section>
-
-        <section className="mt-8 rounded-[2rem] border border-surface-200 bg-white/90 p-4 shadow-sm md:p-5">
-          <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-500">
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Refine suggestions</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <AnimatedSelect
-              value={String(yearFilter)}
-              onChange={value => setYearFilter(value === 'all' ? 'all' : Number(value))}
-              options={[
-                { value: 'all', label: 'All years' },
-                { value: '1', label: 'Year 1' },
-                { value: '2', label: 'Year 2' },
-                { value: '3', label: 'Year 3' },
-                { value: '4', label: 'Year 4' },
-              ]}
-            />
-
-            <AnimatedSelect
-              value={interestFilter}
-              onChange={value => setInterestFilter(value as 'all' | string)}
-              options={[
-                { value: 'all', label: 'All interests' },
-                ...allInterests.map(interest => ({ value: interest, label: prettyLabel(interest) })),
-              ]}
-            />
-
-            <AnimatedSelect
-              value={groupFilter}
-              onChange={value => setGroupFilter(value as 'all' | GroupPreference)}
-              options={[
-                { value: 'all', label: 'All group styles' },
-                { value: 'solo', label: 'Solo' },
-                { value: 'small_group', label: 'Small group' },
-                { value: 'medium_group', label: 'Medium group' },
-                { value: 'large_group', label: 'Large group' },
-              ]}
-            />
-
-            <AnimatedSelect
-              value={energyFilter}
-              onChange={value => setEnergyFilter(value as 'all' | EnergyLevel)}
-              options={[
-                { value: 'all', label: 'All energy levels' },
-                { value: 'low', label: 'Low' },
-                { value: 'moderate', label: 'Moderate' },
-                { value: 'high', label: 'High' },
-              ]}
-            />
-          </div>
         </section>
 
         {isEmpty ? (
@@ -306,6 +215,16 @@ export function CommunitiesScreen() {
 }
 
 function MatchCard({ match, compact }: { match: MatchEntry; compact: boolean }) {
+  const [messageDraft, setMessageDraft] = useState('');
+
+  const handleSend = () => {
+    if (!messageDraft.trim()) {
+      return;
+    }
+
+    setMessageDraft('');
+  };
+
   return (
     <article
       className={[
@@ -326,24 +245,7 @@ function MatchCard({ match, compact }: { match: MatchEntry; compact: boolean }) 
             <h4 className={compact ? 'text-base font-semibold text-ink-900' : 'text-lg font-semibold text-ink-900'}>{match.name}</h4>
             <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700">{match.fitLabel}</span>
           </div>
-
-          <p className="mt-0.5 text-xs text-ink-500">Year {match.year} · {match.major}</p>
         </div>
-      </div>
-
-      <p className={compact ? 'mt-3 text-xs text-ink-600' : 'mt-3 text-sm text-ink-600'}>{match.aiReason}</p>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {match.interests.slice(0, compact ? 2 : 3).map(interest => (
-          <span key={interest} className="rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[11px] font-medium text-primary-700">
-            {prettyLabel(interest)}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-2 space-y-1 text-[11px] text-ink-500">
-        {match.sharedClasses.length > 0 && <p>Shared classes: {match.sharedClasses.join(', ')}</p>}
-        {match.sharedClubs.length > 0 && <p>Shared clubs: {match.sharedClubs.join(', ')}</p>}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -351,13 +253,22 @@ function MatchCard({ match, compact }: { match: MatchEntry; compact: boolean }) 
           <MessageSquare className="mr-1 inline h-3.5 w-3.5" />
           Say hi
         </button>
-        <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 px-3 py-2 text-xs font-semibold text-ink-600">
-          <UserRound className="mr-1 inline h-3.5 w-3.5" />
-          View profile
-        </button>
-        <button className="btn-tactile btn-tactile-soft rounded-xl border border-surface-200 px-3 py-2 text-xs font-semibold text-ink-600">
-          <Bookmark className="mr-1 inline h-3.5 w-3.5" />
-          Save for later
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="text"
+          value={messageDraft}
+          onChange={event => setMessageDraft(event.target.value)}
+          placeholder="Send a quick intro..."
+          className="h-10 flex-1 rounded-xl border border-surface-200 bg-surface-50 px-3 text-sm text-ink-700 outline-none transition focus:border-primary-300 focus:bg-white"
+        />
+        <button
+          onClick={handleSend}
+          className="btn-tactile btn-tactile-solid inline-flex h-10 items-center gap-1 rounded-xl bg-primary-500 px-3 text-xs font-semibold text-white hover:bg-primary-600"
+        >
+          <Send className="h-3.5 w-3.5" />
+          Send
         </button>
       </div>
     </article>

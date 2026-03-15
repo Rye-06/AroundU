@@ -183,11 +183,23 @@ export function MapScreen({ onBack, onCreateEvent, onGoToMessages, onCreateIcebr
 
   const displayedEvents = useMemo<MapEvent[]>(
     () => {
-      if (backendEvents.length > 0) {
-        return [...backendEvents, ...userEvents];
-      }
+      const combined = backendEvents.length > 0
+        ? [...backendEvents, ...userEvents]
+        : [...SAMPLE_MARKER_EVENTS, ...mapEvents, ...userEvents];
 
-      return [...SAMPLE_MARKER_EVENTS, ...mapEvents, ...userEvents];
+      const seen = new Set<string>();
+      return combined.filter((event) => {
+        if (!event?.id) {
+          return true;
+        }
+
+        if (seen.has(event.id)) {
+          return false;
+        }
+
+        seen.add(event.id);
+        return true;
+      });
     },
     [backendEvents, userEvents]
   );

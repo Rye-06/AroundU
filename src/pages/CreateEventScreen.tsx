@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, Compass, LocateFixed, MapPin, Search, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -13,7 +13,7 @@ import {
 
 type CreateEventScreenProps = {
   hostUserId: string;
-  onEventPosted?: (payload: CreateEventSubmission) => void;
+  onEventPosted?: (payload: CreateEventSubmission & { id?: string }) => void;
 };
 
 type PresetSpot = {
@@ -182,7 +182,9 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
       return;
     }
 
-    if (!window.google?.maps?.Geocoder) {
+    const googleMaps = (window as Window & { google?: any }).google;
+
+    if (!googleMaps?.maps?.Geocoder) {
       setErrorMessage('Place search is unavailable right now. Try selecting a preset spot or clicking the map.');
       return;
     }
@@ -191,7 +193,7 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
     setErrorMessage('');
 
     try {
-      const geocoder = new window.google.maps.Geocoder();
+      const geocoder = new googleMaps.maps.Geocoder();
       const result = await geocoder.geocode({ address: `${query}, University of Toronto, Toronto` });
       const first = result.results?.[0];
 
@@ -249,8 +251,12 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
     setLocationLabel('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    if (submitting) {
+      return;
+    }
 
     if (!hostUserId) {
       setErrorMessage('Missing user id. Please sign in again so we can attach this event to your account.');
@@ -286,13 +292,15 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
       creator_location: creatorLocation,
     };
 
-    console.log(submission)
     try {
       setSubmitting(true);
       setErrorMessage('');
 
-      await createEvent(toCreateEventBody(submission));
-      onEventPosted?.(submission);
+      const createdEvent = await createEvent(toCreateEventBody(submission));
+      onEventPosted?.({
+        ...submission,
+        id: createdEvent?.id,
+      });
       setSubmitted(true);
       clearForm();
       window.setTimeout(() => setSubmitted(false), 3000);

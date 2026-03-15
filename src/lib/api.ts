@@ -235,6 +235,40 @@ export const updateInterest = (id: string, body: Partial<{ name: string }>, sign
   updateResource<InterestRecord, Partial<{ name: string }>>('interests', id, body, signal);
 export const deleteInterest = (id: string, signal?: AbortSignal) => deleteResource('interests', id, signal);
 
+// -------- Chats --------
+export type ApiChatRecord = {
+  id: string;
+  event_id?: string | null;
+  created_at?: string;
+};
+
+export type CreateChatBody = Omit<ApiChatRecord, 'id' | 'created_at'>;
+export type UpdateChatBody = Partial<CreateChatBody>;
+
+export const getChats = (signal?: AbortSignal) => listResource<ApiChatRecord>('chats', signal);
+export const getChatById = (id: string, signal?: AbortSignal) => getResourceById<ApiChatRecord>('chats', id, signal);
+export const createChat = (body: CreateChatBody, signal?: AbortSignal) => createResource<ApiChatRecord, CreateChatBody>('chats', body, signal);
+export const updateChat = (id: string, body: UpdateChatBody, signal?: AbortSignal) => updateResource<ApiChatRecord, UpdateChatBody>('chats', id, body, signal);
+export const deleteChat = (id: string, signal?: AbortSignal) => deleteResource('chats', id, signal);
+
+// -------- Messages --------
+export type ApiMessageRecord = {
+  id: string;
+  chat_id?: string | null;
+  sender_id?: string | null;
+  content: string;
+  created_at?: string;
+};
+
+export type CreateMessageBody = Omit<ApiMessageRecord, 'id' | 'created_at'>;
+export type UpdateMessageBody = Partial<CreateMessageBody>;
+
+export const getMessages = (signal?: AbortSignal) => listResource<ApiMessageRecord>('messages', signal);
+export const getMessageById = (id: string, signal?: AbortSignal) => getResourceById<ApiMessageRecord>('messages', id, signal);
+export const createMessage = (body: CreateMessageBody, signal?: AbortSignal) => createResource<ApiMessageRecord, CreateMessageBody>('messages', body, signal);
+export const updateMessage = (id: string, body: UpdateMessageBody, signal?: AbortSignal) => updateResource<ApiMessageRecord, UpdateMessageBody>('messages', id, body, signal);
+export const deleteMessage = (id: string, signal?: AbortSignal) => deleteResource('messages', id, signal);
+
 // -------- Map Adapter --------
 export type MapEventPayload = {
   id: string;

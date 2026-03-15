@@ -57,6 +57,7 @@ type AppMapEvent = {
 };
 
 type PostedEventPayload = {
+  id?: string;
   host_user_id: string;
   title: string;
   description: string;
@@ -75,13 +76,6 @@ type PostedEventPayload = {
 
 type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
 const USER_ID_STORAGE_KEY = 'aroundu.user.id';
-
-type EventChatThread = {
-  id: string;
-  eventId: string;
-  title: string;
-  participantIds: string[];
-};
 
 type IcebreakerPost = {
   id: string;
@@ -129,8 +123,7 @@ export default function App() {
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
-  const [eventChatThreads, setEventChatThreads] = useState<EventChatThread[]>([]);
-  const [activeEventChatId, setActiveEventChatId] = useState<string | null>(null);
+  const [selectedMessageEventId, setSelectedMessageEventId] = useState<string | null>(null);
   const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
@@ -183,7 +176,7 @@ export default function App() {
     const spreadIndex = userMapEvents.length;
     const top = 30 + ((spreadIndex * 13) % 40);
     const left = 28 + ((spreadIndex * 17) % 44);
-    const nextId = `user-event-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const nextId = post.id || `user-event-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
 
 
@@ -389,9 +382,9 @@ export default function App() {
 
   const handleJoinEventChat = ({
     eventId,
-    eventTitle,
-    hostUserId,
-    participantUserIds,
+    eventTitle: _eventTitle,
+    hostUserId: _hostUserId,
+    participantUserIds: _participantUserIds,
   }: {
     eventId: string;
     eventTitle: string;
@@ -402,44 +395,8 @@ export default function App() {
       return;
     }
 
-    const nextThreadId = `event-chat-${eventId}`;
-    const mergedParticipants = Array.from(
-      new Set([
-        ...participantUserIds,
-        ...(hostUserId ? [hostUserId] : []),
-        sessionUserId,
-      ].filter(Boolean)),
-    );
-
-    setEventChatThreads(prev => {
-      const existing = prev.find(thread => thread.id === nextThreadId);
-
-      if (existing) {
-        return prev.map(thread => {
-          if (thread.id !== nextThreadId) {
-            return thread;
-          }
-
-          return {
-            ...thread,
-            title: eventTitle,
-            participantIds: mergedParticipants,
-          };
-        });
-      }
-
-      return [
-        {
-          id: nextThreadId,
-          eventId,
-          title: eventTitle,
-          participantIds: mergedParticipants,
-        },
-        ...prev,
-      ];
-    });
-
-    setActiveEventChatId(nextThreadId);
+    setSelectedMessageEventId(eventId);
+    setCurrentScreen('messages');
   };
 
   if (showSplash) {
@@ -531,7 +488,7 @@ export default function App() {
           {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} onCreateIcebreaker={createIcebreaker} onJoinEventChat={handleJoinEventChat} currentUserId={sessionUserId} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
           {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
-          {currentScreen === 'messages' && <MessagesScreen key="messages" eventChatThreads={eventChatThreads} activeEventChatId={activeEventChatId} />}
+          {currentScreen === 'messages' && <MessagesScreen key="messages" preferredEventId={selectedMessageEventId} onPreferredEventHandled={() => setSelectedMessageEventId(null)} currentUserId={sessionUserId} currentUserName={aiProfile.name} currentUserAvatar={profilePhotoUrl} />}
           {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
           {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" profile={aiProfile} onBack={() => setCurrentScreen('profile')} onSave={handleProfileSave} />}
         </AnimatePresence>

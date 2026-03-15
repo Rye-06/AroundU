@@ -1,235 +1,459 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Settings, BookOpen, Dumbbell, Bell, MoreVertical, Plus, Smile, Check, FileText } from 'lucide-react';
-import { ChatListItem } from '../components/ChatListItem';
+import { Search, Settings, Bell, MoreVertical, Plus, Smile, Check, MessageSquare } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ConstellationBackground } from '../components/ConstellationBackground';
+import {
+  createChat,
+  createMessage,
+  getChats,
+  getEventParticipants,
+  getEvents,
+  getMessages,
+  type ApiChatRecord,
+  type ApiEventRecord,
+  type ApiMessageRecord,
+  type EventParticipantRecord,
+} from '../lib/api';
 
-type EventChatThread = {
-  id: string;
-  eventId: string;
-  title: string;
-  participantIds: string[];
+type MessagesScreenProps = {
+  preferredEventId?: string | null;
+  onPreferredEventHandled?: () => void;
+  currentUserId: string | null;
+  currentUserName: string;
+  currentUserAvatar: string;
 };
 
+const LIVE_POLL_MS = 4000;
+
 export function MessagesScreen({
-  eventChatThreads = [],
-  activeEventChatId = null,
-}: {
-  eventChatThreads?: EventChatThread[];
-  activeEventChatId?: string | null;
-}) {
-  const activeEventThread = eventChatThreads.find(thread => thread.id === activeEventChatId) ?? null;
+  preferredEventId = null,
+  onPreferredEventHandled,
+  currentUserId,
+  currentUserName,
+  currentUserAvatar,
+}: MessagesScreenProps) {
+  const [events, setEvents] = useState<ApiEventRecord[]>([]);
+  const [participants, setParticipants] = useState<EventParticipantRecord[]>([]);
+  const [chats, setChats] = useState<ApiChatRecord[]>([]);
+  const [messages, setMessages] = useState<ApiMessageRecord[]>([]);
+
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [messageDraft, setMessageDraft] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const creatingChatByEvent = useRef<Map<string, Promise<ApiChatRecord>>>(new Map());
+
+  const joinedEventIds = useMemo(() => {
+    if (!currentUserId) {
+      return new Set<string>();
+    }
+
+    return new Set(
+      participants
+        .filter(entry => entry.user_id === currentUserId)
+        .map(entry => entry.event_id),
+    );
+  }, [currentUserId, participants]);
+
+  const joinedEvents = useMemo(() => {
+    return events.filter(event => joinedEventIds.has(event.id));
+  }, [events, joinedEventIds]);
+
+  const eventChatByEventId = useMemo(() => {
+    const map = new Map<string, ApiChatRecord>();
+
+    chats.forEach(chat => {
+      if (chat.event_id && !map.has(chat.event_id)) {
+        map.set(chat.event_id, chat);
+      }
+    });
+
+    return map;
+  }, [chats]);
+
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) {
+      return null;
+    }
+
+    return joinedEvents.find(event => event.id === selectedEventId) ?? null;
+  }, [joinedEvents, selectedEventId]);
+
+  const selectedChat = useMemo(() => {
+    if (!selectedEventId) {
+      return null;
+    }
+
+    return eventChatByEventId.get(selectedEventId) ?? null;
+  }, [eventChatByEventId, selectedEventId]);
+
+  const activeMessages = useMemo(() => {
+    if (!selectedChat?.id) {
+      return [];
+    }
+
+    return messages
+      .filter(message => message.chat_id === selectedChat.id)
+      .sort((a, b) => {
+        const left = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const right = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return left - right;
+      });
+  }, [messages, selectedChat]);
+
+  const eventRows = useMemo(() => {
+    return joinedEvents.map(event => {
+      const chat = eventChatByEventId.get(event.id);
+      const latestMessage = chat
+        ? messages
+          .filter(message => message.chat_id === chat.id)
+          .sort((a, b) => {
+            const left = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const right = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return right - left;
+          })[0]
+        : undefined;
+
+      return {
+        event,
+        chat,
+        latestMessage,
+      };
+    });
+  }, [eventChatByEventId, joinedEvents, messages]);
+
+  const loadLiveData = async (silent = false) => {
+    if (!currentUserId) {
+      setEvents([]);
+      setParticipants([]);
+      setChats([]);
+      setMessages([]);
+      return;
+    }
+
+    try {
+      if (!silent) {
+        setIsLoading(true);
+      }
+
+      const [nextParticipants, nextEvents, nextChats, nextMessages] = await Promise.all([
+        getEventParticipants(),
+        getEvents(),
+        getChats(),
+        getMessages(),
+      ]);
+
+      setParticipants(nextParticipants);
+      setEvents(nextEvents);
+      setChats(nextChats);
+      setMessages(nextMessages);
+      setErrorMessage('');
+    } catch {
+      setErrorMessage('Unable to sync messages right now.');
+    } finally {
+      if (!silent) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initialLoad = async () => {
+      if (!isMounted) {
+        return;
+      }
+      await loadLiveData(false);
+    };
+
+    void initialLoad();
+
+    const interval = window.setInterval(() => {
+      void loadLiveData(true);
+    }, LIVE_POLL_MS);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(interval);
+    };
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!joinedEvents.length) {
+      setSelectedEventId(null);
+      return;
+    }
+
+    if (preferredEventId && joinedEvents.some(event => event.id === preferredEventId)) {
+      setSelectedEventId(preferredEventId);
+      onPreferredEventHandled?.();
+      return;
+    }
+
+    if (!selectedEventId || !joinedEvents.some(event => event.id === selectedEventId)) {
+      setSelectedEventId(joinedEvents[0].id);
+    }
+  }, [joinedEvents, onPreferredEventHandled, preferredEventId, selectedEventId]);
+
+  const formatAgo = (value?: string) => {
+    if (!value) {
+      return 'now';
+    }
+
+    const parsed = new Date(value).getTime();
+    if (!Number.isFinite(parsed)) {
+      return 'now';
+    }
+
+    const diffMinutes = Math.max(1, Math.floor((Date.now() - parsed) / 60000));
+    if (diffMinutes < 60) {
+      return `${diffMinutes}m`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours}h`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d`;
+  };
+
+  const formatClock = (value?: string) => {
+    if (!value) {
+      return 'Now';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Now';
+    }
+
+    return parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const ensureChatForEvent = async (eventId: string) => {
+    const existing = eventChatByEventId.get(eventId);
+    if (existing) {
+      return existing;
+    }
+
+    const inFlight = creatingChatByEvent.current.get(eventId);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const nextPromise = createChat({ event_id: eventId });
+    creatingChatByEvent.current.set(eventId, nextPromise);
+
+    try {
+      const created = await nextPromise;
+      setChats(prev => {
+        if (prev.some(chat => chat.id === created.id)) {
+          return prev;
+        }
+
+        return [...prev, created];
+      });
+      return created;
+    } finally {
+      creatingChatByEvent.current.delete(eventId);
+    }
+  };
+
+  const handleSend = async () => {
+    const nextContent = messageDraft.trim();
+    if (!selectedEventId || !currentUserId || !nextContent || isSending) {
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const chat = await ensureChatForEvent(selectedEventId);
+      const created = await createMessage({
+        chat_id: chat.id,
+        sender_id: currentUserId,
+        content: nextContent,
+      });
+
+      setMessages(prev => [...prev, created]);
+      setMessageDraft('');
+      setErrorMessage('');
+    } catch {
+      setErrorMessage('Failed to send message. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="h-full flex overflow-hidden text-ink-700 relative"
+      className="relative flex h-full overflow-hidden text-ink-700"
     >
-      <aside className="w-80 bg-surface-50 border-r border-surface-200 flex flex-col shrink-0 relative z-10">
+      <aside className="relative z-10 flex w-80 shrink-0 flex-col border-r border-surface-200 bg-surface-50">
         <div className="p-6">
           <h1 className="text-xl font-bold text-ink-800">Messages</h1>
-          <p className="text-xs text-ink-400 mt-1">Stay connected</p>
+          <p className="mt-1 text-xs text-ink-400">Joined event chats • Live sync every 4s</p>
           <div className="mt-6">
             <div className="relative">
-              <input 
-                type="text" 
-                className="w-full bg-white border border-surface-200 rounded-xl py-2.5 pl-10 text-sm focus:ring-2 focus:ring-primary-200 transition-all placeholder-ink-400 shadow-sm" 
-                placeholder="Search conversations..."
+              <input
+                type="text"
+                className="w-full rounded-xl border border-surface-200 bg-white py-2.5 pl-10 text-sm shadow-sm transition-all placeholder-ink-400 focus:ring-2 focus:ring-primary-200"
+                placeholder="Search joined event chats..."
+                disabled
               />
-              <Search className="h-4 w-4 absolute left-3 top-3 text-ink-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-ink-400" />
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-6 custom-scrollbar">
-          <div className="mb-4">
-            <h3 className="px-3 text-[11px] font-bold text-ink-400 uppercase tracking-wider mb-2">Direct Messages</h3>
-            <ChatListItem 
-              name="Mia Thompson" 
-              time="12m" 
-              status="Open to a quick chat" 
-              active 
-              online 
-              avatar="https://picsum.photos/seed/mia/100/100" 
-            />
-            <ChatListItem 
-              name="Alex Chen" 
-              time="2h" 
-              status="Reading in the sun ☀️" 
-              avatar="https://picsum.photos/seed/alexc/100/100" 
-            />
-            <ChatListItem 
-              name="Jordan Riley" 
-              time="5h" 
-              status="Looking for coffee?" 
-              avatar="https://picsum.photos/seed/jordanr/100/100" 
-            />
-          </div>
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-3 pb-6">
+          <div>
+            <h3 className="mb-2 px-3 text-[11px] font-bold uppercase tracking-wider text-ink-400">Joined Events</h3>
 
-          <div className="mt-8">
-            <h3 className="px-3 text-[11px] font-bold text-ink-400 uppercase tracking-wider mb-2">Groups</h3>
-            {eventChatThreads.map(thread => (
-              <div
-                key={thread.id}
-                className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-colors mb-1 ${
-                  thread.id === activeEventChatId ? 'bg-primary-50 border border-primary-100' : 'hover:bg-surface-100'
+            {eventRows.map(({ event, latestMessage }) => (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => setSelectedEventId(event.id)}
+                className={`mb-1 flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-colors ${
+                  event.id === selectedEventId ? 'border border-primary-100 bg-primary-50' : 'hover:bg-surface-100'
                 }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-primary-500">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-500">
                   <MessageSquare className="h-5 w-5" />
                 </div>
-                <div>
-                  <span className="text-sm font-medium text-ink-700 block">{thread.title}</span>
-                  <span className="text-[10px] text-ink-400">{thread.participantIds.length} participants</span>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink-700">{event.title}</span>
+                  <span className="block truncate text-[10px] text-ink-400">
+                    {(latestMessage?.content || 'No messages yet').slice(0, 34)} • {formatAgo(latestMessage?.created_at || event.created_at)}
+                  </span>
                 </div>
-              </div>
+              </button>
             ))}
 
-            <div className="flex items-center gap-3 p-3 hover:bg-surface-100 rounded-2xl cursor-pointer transition-colors mb-1">
-              <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-primary-500">
-                <BookOpen className="h-5 w-5" />
+            {!isLoading && eventRows.length === 0 && (
+              <div className="rounded-xl border border-surface-200 bg-white p-3 text-xs text-ink-500">
+                No joined event chats yet. Join an event on the map to start messaging.
               </div>
-              <span className="text-sm font-medium text-ink-700">Book Club</span>
-            </div>
-            <div className="flex items-center gap-3 p-3 hover:bg-surface-100 rounded-2xl cursor-pointer transition-colors mb-1">
-              <div className="w-10 h-10 rounded-xl bg-coral-50 flex items-center justify-center text-coral-500">
-                <Dumbbell className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-ink-700">Campus Runners</span>
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="p-4 border-t border-surface-200 flex items-center gap-3">
-          <img src="https://picsum.photos/seed/sam/100/100" alt="Sam" className="w-9 h-9 rounded-full" referrerPolicy="no-referrer" />
+        <div className="flex items-center gap-3 border-t border-surface-200 p-4">
+          <img src={currentUserAvatar} alt={currentUserName} className="h-9 w-9 rounded-full" referrerPolicy="no-referrer" />
           <div className="flex-1">
-            <div className="text-sm font-semibold">Sam Wilson</div>
-            <div className="text-[10px] text-emerald-500 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Active
+            <div className="text-sm font-semibold">{currentUserName}</div>
+            <div className="flex items-center gap-1 text-[10px] text-emerald-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              Live
             </div>
           </div>
-          <button className="text-ink-400 hover:text-ink-600 transition-colors">
+          <button className="text-ink-400 transition-colors hover:text-ink-600">
             <Settings className="h-5 w-5" />
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 bg-white flex flex-col relative z-0">
+      <div className="relative z-0 flex flex-1 flex-col bg-white">
         <ConstellationBackground />
 
-        <header className="h-16 border-b border-surface-200 flex items-center justify-between px-8 bg-white/80 backdrop-blur-sm z-10">
+        <header className="z-10 flex h-16 items-center justify-between border-b border-surface-200 bg-white/80 px-8 backdrop-blur-sm">
           <div className="flex items-center gap-4">
-            <div className="flex -space-x-2">
-              {[1, 2].map(i => (
-                <img 
-                  key={i}
-                  className="w-8 h-8 rounded-full border-2 border-white" 
-                  src={`https://picsum.photos/seed/book${i}/50/50`} 
-                  alt="member"
-                  referrerPolicy="no-referrer"
-                />
-              ))}
-              <div className="w-8 h-8 rounded-full border-2 border-white bg-surface-100 flex items-center justify-center text-[10px] font-bold text-ink-500">+12</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-surface-100 text-[10px] font-bold text-ink-500">
+              {selectedEvent ? 'EV' : '--'}
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-ink-800">Book Club</h2>
-                <p className="text-[11px] text-ink-400">
-                  {activeEventThread
-                    ? `Event chat • ${activeEventThread.participantIds.length} participants`
-                    : 'Discussing "The Midnight Library" this week'}
-                </p>
+              <h2 className="text-sm font-semibold text-ink-800">{selectedEvent?.title || 'Select an event chat'}</h2>
+              <p className="text-[11px] text-ink-400">
+                {selectedEvent ? `Event id ${selectedEvent.id.slice(0, 8)} • Live updates` : 'Join an event from map to chat here'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4 text-ink-400">
-            <button className="hover:text-primary-500 transition-colors"><Bell className="h-5 w-5" /></button>
-            <button className="hover:text-primary-500 transition-colors"><MoreVertical className="h-5 w-5" /></button>
+            <button className="transition-colors hover:text-primary-500"><Bell className="h-5 w-5" /></button>
+            <button className="transition-colors hover:text-primary-500"><MoreVertical className="h-5 w-5" /></button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+        <div className="custom-scrollbar flex-1 space-y-8 overflow-y-auto p-8">
+          {errorMessage && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>
+          )}
+
+          {isLoading && (
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm text-ink-500">Loading joined chats...</div>
+          )}
+
           <div className="flex items-center justify-center">
-            <span className="text-[11px] uppercase tracking-widest text-ink-400 bg-white px-4">Monday, October 23</span>
+            <span className="bg-white px-4 text-[11px] uppercase tracking-widest text-ink-400">Today</span>
           </div>
 
-          <ChatMessage 
-            name="Mia Thompson" 
-            time="10:42 AM" 
-            content="Hey everyone! Has anyone started chapter 4 of 'The Midnight Library' yet? The library metaphor is so cozy."
-            avatar="https://picsum.photos/seed/mia/100/100"
-          />
-          <ChatMessage 
-            name="Leo Garcia" 
-            time="10:45 AM" 
-            content="I'm about halfway through! It definitely makes me think about all the 'what ifs' in life. Perfect reading for a rainy day like today."
-            avatar="https://picsum.photos/seed/leo/100/100"
-          />
-          <ChatMessage 
-            name="You" 
-            time="11:05 AM" 
-            content="I just finished it! Would anyone be up for a coffee chat at the Student Union later today to discuss? ☕️"
-            avatar="https://picsum.photos/seed/sam/100/100"
-            isSelf
-          />
-          <ChatMessage 
-            name="Mia Thompson" 
-            time="11:08 AM" 
-            content="I'd love that! See you there around 4?"
-            avatar="https://picsum.photos/seed/mia/100/100"
-          />
+          {activeMessages.map(message => {
+            const isSelf = Boolean(currentUserId && message.sender_id === currentUserId);
+            return (
+              <div key={message.id}>
+                <ChatMessage
+                  name={isSelf ? 'You' : `User ${message.sender_id?.slice(0, 8) ?? 'guest'}`}
+                  time={formatClock(message.created_at)}
+                  content={message.content}
+                  avatar={isSelf ? currentUserAvatar : `https://picsum.photos/seed/${encodeURIComponent(message.sender_id ?? message.id)}/100/100`}
+                  isSelf={isSelf}
+                />
+              </div>
+            );
+          })}
+
+          {!isLoading && selectedEvent && activeMessages.length === 0 && (
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm text-ink-500">
+              No messages yet. Send the first one.
+            </div>
+          )}
+
+          {!selectedEvent && !isLoading && (
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-3 text-sm text-ink-500">
+              Select a joined event chat from the left panel.
+            </div>
+          )}
         </div>
 
-        <footer className="p-6 bg-white border-t border-surface-100">
-          <div className="max-w-4xl mx-auto flex items-end gap-4 bg-surface-50 p-2 rounded-2xl border border-surface-200">
-            <button className="p-2 text-ink-400 hover:text-primary-500 transition-colors"><Plus className="h-6 w-6" /></button>
-            <textarea 
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-0 resize-none placeholder-ink-400 max-h-32" 
-              placeholder="Type a message..." 
+        <footer className="border-t border-surface-100 bg-white p-6">
+          <div className="mx-auto flex max-w-4xl items-end gap-4 rounded-2xl border border-surface-200 bg-surface-50 p-2">
+            <button className="p-2 text-ink-400 transition-colors hover:text-primary-500"><Plus className="h-6 w-6" /></button>
+            <textarea
+              className="max-h-32 flex-1 resize-none border-none bg-transparent px-0 py-2 text-sm placeholder-ink-400 focus:ring-0"
+              placeholder={selectedEvent ? 'Type a message...' : 'Join and select an event chat first...'}
               rows={1}
+              value={messageDraft}
+              onChange={e => setMessageDraft(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void handleSend();
+                }
+              }}
+              disabled={!selectedEvent || !currentUserId}
             />
             <div className="flex items-center gap-2 pr-2">
-              <button className="p-2 text-ink-400 hover:text-primary-500 transition-colors"><Smile className="h-6 w-6" /></button>
-              <button className="bg-primary-500 text-white p-2 rounded-xl hover:bg-primary-600 transition-all shadow-lg shadow-primary-200">
+              <button className="p-2 text-ink-400 transition-colors hover:text-primary-500"><Smile className="h-6 w-6" /></button>
+              <button
+                onClick={() => void handleSend()}
+                disabled={!selectedEvent || !currentUserId || isSending || !messageDraft.trim()}
+                className="rounded-xl bg-primary-500 p-2 text-white shadow-lg shadow-primary-200 transition-all hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
                 <Check className="h-5 w-5" />
               </button>
             </div>
           </div>
         </footer>
       </div>
-
-      <aside className="w-72 bg-white border-l border-surface-200 hidden xl:flex flex-col shrink-0">
-        <div className="p-6">
-          <h3 className="font-semibold text-ink-800 mb-6">Group Info</h3>
-          <div className="space-y-6">
-            <div>
-              <label className="text-[10px] uppercase font-bold text-ink-400 tracking-wider">About</label>
-              <p className="mt-2 text-xs text-ink-600 leading-relaxed">
-                A quiet space for book lovers on campus. We meet every Friday afternoon for tea and discussion.
-              </p>
-            </div>
-            <div>
-              <label className="text-[10px] uppercase font-bold text-ink-400 tracking-wider">Upcoming Event</label>
-              <div className="mt-2 p-3 bg-primary-50 rounded-xl border border-primary-100">
-                <span className="text-[10px] font-bold text-primary-500 block mb-1">THIS FRIDAY</span>
-                <span className="text-xs font-semibold block">Midnight Library Discussion</span>
-                <span className="text-[10px] text-ink-500 block">4:00 PM · Union Lounge</span>
-              </div>
-            </div>
-            <div>
-              <label className="text-[10px] uppercase font-bold text-ink-400 tracking-wider">Shared Files (3)</label>
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center gap-2 p-2 hover:bg-surface-50 rounded-lg cursor-pointer">
-                  <div className="w-8 h-8 bg-coral-50 text-coral-500 rounded flex items-center justify-center">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <span className="text-[11px] font-medium truncate">reading_list_fall.pdf</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
     </motion.div>
   );
 }

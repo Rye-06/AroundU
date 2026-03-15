@@ -4,6 +4,7 @@ import { AlertTriangle, Check, Compass, LocateFixed, MapPin, Search, X } from 'l
 import { cn } from '../lib/utils';
 import { FieldGroup } from '../components/FieldGroup';
 import EventLocationPickerMap from '../components/map/EventLocationPickerMap';
+import { AnimatedSelect } from '../components/AnimatedSelect';
 import {
   createEvent,
   toCreateEventBody,
@@ -75,11 +76,11 @@ function isValidCoordinate(value: number, type: 'lat' | 'lng') {
 }
 
 const STARTS_IN_OPTIONS = [
-  { value: 5, label: 'In 5m' },
-  { value: 10, label: 'In 10m' },
-  { value: 30, label: 'In 30m' },
-  { value: 60, label: 'In 1h' },
-  { value: 120, label: 'In 2h' },
+  { value: 5, label: '5m' },
+  { value: 10, label: '10m' },
+  { value: 30, label: '30m' },
+  { value: 60, label: '1h' },
+  { value: 120, label: '2h' },
 ];
 
 function toLabel(tag: string) {
@@ -374,32 +375,23 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <FieldGroup label="Event type" required>
-              <select
+              <AnimatedSelect
                 value={eventType}
-                onChange={e => setEventType(e.target.value)}
-                className="w-full rounded-xl border border-surface-200 bg-white px-4 py-3.5 text-sm text-ink-800 transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
-              >
-                <option value="">Select event type</option>
-                {EVENT_TYPE_OPTIONS.map(option => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+                onChange={setEventType}
+                placeholder="Select event type"
+                options={[
+                  { value: '', label: 'Select event type' },
+                  ...EVENT_TYPE_OPTIONS.map(option => ({ value: option, label: option })),
+                ]}
+              />
             </FieldGroup>
 
             <FieldGroup label="Skill level required" required>
-              <select
+              <AnimatedSelect
                 value={skillLevelRequired}
-                onChange={e => setSkillLevelRequired(e.target.value)}
-                className="w-full rounded-xl border border-surface-200 bg-white px-4 py-3.5 text-sm text-ink-800 transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
-              >
-                {SKILL_LEVEL_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setSkillLevelRequired}
+                options={SKILL_LEVEL_OPTIONS.map(option => ({ value: option.value, label: option.label }))}
+              />
             </FieldGroup>
           </div>
 
@@ -446,22 +438,32 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
             </FieldGroup>
 
             <FieldGroup label="Max participants" required>
-              <div className="flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => setMaxParticipants(prev => Math.max(2, prev - 1))}
-                  className="btn-tactile btn-tactile-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-surface-200 bg-surface-50 text-lg text-ink-600"
-                >
-                  -
-                </button>
-                <span className="w-12 text-center text-xl font-bold text-primary-600">{maxParticipants}</span>
-                <button
-                  type="button"
-                  onClick={() => setMaxParticipants(prev => Math.min(100, prev + 1))}
-                  className="btn-tactile btn-tactile-soft inline-flex h-9 w-9 items-center justify-center rounded-full border border-surface-200 bg-surface-50 text-lg text-ink-600"
-                >
-                  +
-                </button>
+              <div className="rounded-xl border border-surface-200 bg-white px-3 py-2">
+                <input
+                  type="number"
+                  min={2}
+                  max={100}
+                  step={1}
+                  value={maxParticipants}
+                  onChange={e => {
+                    const nextValue = Number(e.target.value);
+                    if (Number.isNaN(nextValue)) {
+                      return;
+                    }
+
+                    setMaxParticipants(Math.min(100, Math.max(1, Math.floor(nextValue))));
+                  }}
+                  onBlur={e => {
+                    const nextValue = Number(e.target.value);
+                    if (Number.isNaN(nextValue) || nextValue < 2) {
+                      setMaxParticipants(2);
+                      return;
+                    }
+
+                    setMaxParticipants(Math.min(100, Math.floor(nextValue)));
+                  }}
+                  className="w-full rounded-lg bg-surface-50 px-3 py-2.5 text-center text-lg font-semibold text-primary-600 outline-none transition focus:bg-white"
+                />
               </div>
             </FieldGroup>
           </div>

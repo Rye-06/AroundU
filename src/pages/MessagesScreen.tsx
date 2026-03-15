@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Settings, Bell, MoreVertical, Plus, Smile, Check, MessageSquare } from 'lucide-react';
+import { Search, Bell, MoreVertical, Plus, Smile, Check, MessageSquare } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ConstellationBackground } from '../components/ConstellationBackground';
 import {
@@ -345,20 +345,6 @@ export function MessagesScreen({
               </div>
             )}
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 border-t border-surface-200 p-4">
-          <img src={currentUserAvatar} alt={currentUserName} className="h-9 w-9 rounded-full" referrerPolicy="no-referrer" />
-          <div className="flex-1">
-            <div className="text-sm font-semibold">{currentUserName}</div>
-            <div className="flex items-center gap-1 text-[10px] text-emerald-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              Live
-            </div>
-          </div>
-          <button className="text-ink-400 transition-colors hover:text-ink-600">
-            <Settings className="h-5 w-5" />
-          </button>
         </div>
       </aside>
 

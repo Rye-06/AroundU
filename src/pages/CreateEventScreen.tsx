@@ -286,6 +286,7 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
       creator_location: creatorLocation,
     };
 
+    console.log(submission)
     try {
       setSubmitting(true);
       setErrorMessage('');

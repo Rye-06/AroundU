@@ -9,6 +9,7 @@ const MARKER_STATE_ACTIVE = 'active';
 const USER_MARKER_IDLE_Z = 4600;
 const USER_MARKER_ACTIVE_Z = 6000;
 const DEFAULT_USER_PHOTO = 'https://picsum.photos/seed/aroundu-user/160/160';
+const PROXIMITY_RADIUS_KM = 1;
 
 const ACTIVITY_TOKEN = {
   quiet: { core: 16, glow: 0.44, ring: 0.32 },
@@ -64,6 +65,24 @@ function toCoordinate(event, index) {
     lat: CAMPUS_CENTER.lat + offset.lat + ringStep,
     lng: CAMPUS_CENTER.lng + offset.lng - ringStep,
   };
+}
+
+function toRadians(value) {
+  return (value * Math.PI) / 180;
+}
+
+function distanceKm(from, to) {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(to.lat - from.lat);
+  const dLng = toRadians(to.lng - from.lng);
+  const lat1 = toRadians(from.lat);
+  const lat2 = toRadians(to.lat);
+
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
 }
 
 function setMarkerActiveState(markerEntries, activeId) {
@@ -478,14 +497,6 @@ export default function CampusMap({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const { isLoaded, error } = useGoogleMapsLoader(apiKey);
 
-  const markerEvents = useMemo(() => {
-    return events.map((event, index) => ({
-      ...event,
-      position: toCoordinate(event, index),
-      preview: event.preview || event.description?.slice(0, 96),
-    }));
-  }, [events]);
-
   const resolvedUserPosition = useMemo(() => {
     if (typeof userPosition?.lat === 'number' && typeof userPosition?.lng === 'number') {
       return userPosition;
@@ -496,6 +507,19 @@ export default function CampusMap({
       lng: CAMPUS_CENTER.lng - 0.0003,
     };
   }, [userPosition]);
+
+  const markerEvents = useMemo(() => {
+    return events
+      .map((event, index) => {
+        const position = toCoordinate(event, index);
+        return {
+          ...event,
+          position,
+          preview: event.preview || event.description?.slice(0, 96),
+        };
+      })
+      .filter(event => distanceKm(resolvedUserPosition, event.position) <= PROXIMITY_RADIUS_KM);
+  }, [events, resolvedUserPosition]);
 
   const userDisplayName = userProfile?.name || 'You';
   const userMood = userProfile?.user_profile?.mood || 'focused';

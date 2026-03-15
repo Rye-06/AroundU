@@ -49,6 +49,11 @@ type AppMapEvent = {
   activityLevel: 'quiet' | 'moderate' | 'high';
   activityType: string;
   groupSize: 'small' | 'medium' | 'large';
+  markerType?: 'event' | 'icebreaker' | string;
+  lat?: number;
+  lng?: number;
+  preview?: string;
+  host_user_id?: string;
 };
 
 type PostedEventPayload = {
@@ -71,17 +76,61 @@ type PostedEventPayload = {
 type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
 const USER_ID_STORAGE_KEY = 'aroundu.user.id';
 
+type EventChatThread = {
+  id: string;
+  eventId: string;
+  title: string;
+  participantIds: string[];
+};
+
+type IcebreakerPost = {
+  id: string;
+  authorName: string;
+  content: string;
+  createdAt: number;
+  createdLabel: string;
+  avatarUrl: string;
+  latitude: number;
+  longitude: number;
+};
+
+const INITIAL_ICEBREAKERS: IcebreakerPost[] = [
+  {
+    id: 'icebreaker-init-1',
+    authorName: 'Jordan Chen',
+    content: 'Anyone else procrastinating right now? I am near Robarts.',
+    createdAt: Date.now() - 20 * 60 * 1000,
+    createdLabel: '20m ago',
+    avatarUrl: 'https://picsum.photos/seed/jordan/100/100',
+    latitude: 43.6622,
+    longitude: -79.3942,
+  },
+  {
+    id: 'icebreaker-init-2',
+    authorName: 'Maya Patel',
+    content: 'Looking for a quick coffee chat before my next class.',
+    createdAt: Date.now() - 58 * 60 * 1000,
+    createdLabel: '58m ago',
+    avatarUrl: 'https://picsum.photos/seed/maya/100/100',
+    latitude: 43.6656,
+    longitude: -79.398,
+  },
+];
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
   const [showSplash, setShowSplash] = useState(true);
   const [eventNotifications, setEventNotifications] = useState<EventToast[]>([]);
   const [userMapEvents, setUserMapEvents] = useState<AppMapEvent[]>([]);
   const [mapFocusEventId, setMapFocusEventId] = useState<string | null>(null);
+  const [icebreakers, setIcebreakers] = useState<IcebreakerPost[]>(INITIAL_ICEBREAKERS);
   const [aiProfile, setAiProfile] = useState<AroundUAIProfile>(DEFAULT_AI_PROFILE);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [eventChatThreads, setEventChatThreads] = useState<EventChatThread[]>([]);
+  const [activeEventChatId, setActiveEventChatId] = useState<string | null>(null);
   const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
@@ -156,6 +205,7 @@ export default function App() {
       activityLevel,
       activityType: post.event_type,
       groupSize,
+      host_user_id: post.host_user_id,
     };
   };
 
@@ -184,6 +234,56 @@ export default function App() {
     setMapFocusEventId(id);
     setCurrentScreen('map');
     dismissNotification(id);
+  };
+
+  const createIcebreaker = (location: { latitude: number; longitude: number }, draftThought?: string) => {
+    const thought = draftThought ?? window.prompt('Post a nearby icebreaker prompt', 'Anyone else procrastinating right now?');
+
+    if (!thought || !thought.trim()) {
+      return;
+    }
+
+    const nextId = `icebreaker-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const newPost: IcebreakerPost = {
+      id: nextId,
+      authorName: aiProfile.name,
+      content: thought.trim(),
+      createdAt: Date.now(),
+      createdLabel: 'Just now',
+      avatarUrl: profilePhotoUrl,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+
+    setIcebreakers(prev => [newPost, ...prev]);
+    setUserMapEvents(prev => [
+      {
+        id: nextId,
+        title: 'Icebreaker Post',
+        description: newPost.content,
+        location: `${newPost.latitude.toFixed(5)}, ${newPost.longitude.toFixed(5)}`,
+        category: 'Icebreaker',
+        host: newPost.authorName,
+        attendees: 1,
+        maxAttendees: 99,
+        timeLeft: 'Live now',
+        photo: `https://picsum.photos/seed/${nextId}/600/400`,
+        tags: ['Icebreaker'],
+        icon: MessageSquare,
+        top: '50%',
+        left: '50%',
+        activityLevel: 'quiet',
+        activityType: 'icebreaker',
+        groupSize: 'small',
+        markerType: 'icebreaker',
+        lat: newPost.latitude,
+        lng: newPost.longitude,
+        preview: 'Tap to reply and start a conversation.',
+      },
+      ...prev,
+    ]);
+
+    setCurrentScreen('map');
   };
 
   const handleAuth = (payload: AuthSubmitPayload) => {
@@ -287,6 +387,61 @@ export default function App() {
     setCurrentScreen('profile');
   };
 
+  const handleJoinEventChat = ({
+    eventId,
+    eventTitle,
+    hostUserId,
+    participantUserIds,
+  }: {
+    eventId: string;
+    eventTitle: string;
+    hostUserId?: string;
+    participantUserIds: string[];
+  }) => {
+    if (!sessionUserId) {
+      return;
+    }
+
+    const nextThreadId = `event-chat-${eventId}`;
+    const mergedParticipants = Array.from(
+      new Set([
+        ...participantUserIds,
+        ...(hostUserId ? [hostUserId] : []),
+        sessionUserId,
+      ].filter(Boolean)),
+    );
+
+    setEventChatThreads(prev => {
+      const existing = prev.find(thread => thread.id === nextThreadId);
+
+      if (existing) {
+        return prev.map(thread => {
+          if (thread.id !== nextThreadId) {
+            return thread;
+          }
+
+          return {
+            ...thread,
+            title: eventTitle,
+            participantIds: mergedParticipants,
+          };
+        });
+      }
+
+      return [
+        {
+          id: nextThreadId,
+          eventId,
+          title: eventTitle,
+          participantIds: mergedParticipants,
+        },
+        ...prev,
+      ];
+    });
+
+    setActiveEventChatId(nextThreadId);
+  };
+
   if (showSplash) {
     return <SplashScreen />;
   }
@@ -372,11 +527,11 @@ export default function App() {
         {currentScreen !== 'map' && <ConstellationBackground />}
 
         <AnimatePresence mode="wait">
-          {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} />}
-          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
+          {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} icebreakers={icebreakers} onDropThought={() => createIcebreaker({ latitude: 43.6629, longitude: -79.3957 })} onOpenMessages={() => setCurrentScreen('messages')} />}
+          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} onCreateIcebreaker={createIcebreaker} onJoinEventChat={handleJoinEventChat} currentUserId={sessionUserId} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
           {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
-          {currentScreen === 'messages' && <MessagesScreen key="messages" />}
+          {currentScreen === 'messages' && <MessagesScreen key="messages" eventChatThreads={eventChatThreads} activeEventChatId={activeEventChatId} />}
           {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
           {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" profile={aiProfile} onBack={() => setCurrentScreen('profile')} onSave={handleProfileSave} />}
         </AnimatePresence>

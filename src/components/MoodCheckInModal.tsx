@@ -38,7 +38,7 @@ export function MoodCheckInModal({ open, onSkip, onSelectMood }: MoodCheckInModa
                 <button
                   type="button"
                   onClick={onSkip}
-                  className="btn-tactile btn-tactile-soft rounded-xl p-2 text-ink-400 transition-colors hover:bg-surface-50 hover:text-ink-600"
+                  className="btn-tactile btn-tactile-soft btn-tactile-slow-press rounded-xl p-2 text-ink-400 transition-colors hover:bg-surface-50 hover:text-ink-600"
                   aria-label="Skip mood check-in"
                 >
                   <X className="h-4 w-4" />
@@ -52,7 +52,7 @@ export function MoodCheckInModal({ open, onSkip, onSelectMood }: MoodCheckInModa
                     type="button"
                     onClick={() => onSelectMood(option.value)}
                     className={cn(
-                      'btn-tactile btn-tactile-soft flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-left text-sm font-medium',
+                      'btn-tactile btn-tactile-soft btn-tactile-slow-press flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-left text-sm font-medium',
                       'border-surface-200 bg-surface-50 text-ink-700 hover:border-primary-200 hover:bg-primary-50/60',
                     )}
                   >
@@ -67,7 +67,7 @@ export function MoodCheckInModal({ open, onSkip, onSelectMood }: MoodCheckInModa
               <button
                 type="button"
                 onClick={onSkip}
-                className="btn-tactile btn-tactile-soft mt-4 w-full cursor-pointer rounded-xl border border-surface-200 px-4 py-2.5 text-sm font-medium text-ink-500 transition-colors hover:bg-surface-50 hover:text-ink-700"
+                className="btn-tactile btn-tactile-soft btn-tactile-slow-press mt-4 w-full cursor-pointer rounded-xl border border-surface-200 px-4 py-2.5 text-sm font-medium text-ink-500 transition-colors hover:bg-surface-50 hover:text-ink-700"
               >
                 Skip for now
               </button>

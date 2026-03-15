@@ -240,10 +240,96 @@ function clearPulseIntervals(pulseIntervalsRef) {
   pulseIntervalsRef.current = [];
 }
 
+function toDomSafeId(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function formatEventTime(value) {
+  if (!value) return 'Starting soon';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+
+  return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function buildExpandedEventCardHtml({ event, joinState, currentUserId }) {
+  const eventIdSafe = toDomSafeId(event.id || 'event');
+  const joinButtonId = `join-btn-${eventIdSafe}`;
+  const openChatButtonId = `open-chat-btn-${eventIdSafe}`;
+  const title = escapeHtml(event.title || 'Campus event');
+  const description = escapeHtml(event.description || event.preview || 'Tap join to be part of this event and chat.');
+  const category = escapeHtml(event.category || 'Event');
+  const timeLabel = escapeHtml(formatEventTime(event.timeLeft || event.event_time));
+  const attendees = Number(event.attendees || 0);
+  const maxAttendees = Number(event.maxAttendees || 8);
+  const host = escapeHtml(event.host || 'Host');
+  const tags = Array.isArray(event.tags) && event.tags.length > 0
+    ? event.tags.slice(0, 3).map(tag => `<span style="display:inline-block;margin-right:6px;margin-top:4px;padding:3px 8px;border-radius:999px;background:#f3f5ef;color:#4f6752;font-size:11px;font-weight:600;">${escapeHtml(tag)}</span>`).join('')
+    : '';
+
+  const isFull = maxAttendees > 0 && attendees >= maxAttendees;
+  const isJoined = joinState?.status === 'joined' || joinState?.status === 'already-joined';
+  const isJoining = joinState?.status === 'joining';
+  const joinDisabled = isJoining || isFull || isJoined || !currentUserId;
+
+  const joinLabel = !currentUserId
+    ? 'Sign in required'
+    : isJoining
+      ? 'Joining...'
+      : isFull
+        ? 'Full'
+        : isJoined
+          ? 'Joined'
+          : 'Join';
+
+  const statusNote = joinState?.message
+    ? `<p style="margin:8px 0 0;color:#647e68;font-size:11px;font-weight:600;">${escapeHtml(joinState.message)}</p>`
+    : '';
+
+  const openChatHtml = isJoined
+    ? `<button id="${openChatButtonId}" style="border:1px solid #e7dfcf;background:#fcf9f2;color:#3f4747;border-radius:12px;padding:9px 10px;font-size:12px;font-weight:700;cursor:pointer;">Open chat</button>`
+    : '';
+
+  return {
+    joinButtonId,
+    openChatButtonId,
+    html: `
+      <div style="min-width:285px;max-width:320px;padding:8px 6px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;animation:aroundu-expand .22s ease-out;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+          <span style="display:inline-block;padding:4px 9px;border-radius:999px;background:#f3eee3;color:#647e68;font-size:11px;font-weight:700;">${category}</span>
+          <span style="font-size:11px;color:#717a7a;">${timeLabel}</span>
+        </div>
+
+        <h3 style="margin:0;font-size:15px;line-height:1.3;color:#1a1e1e;font-weight:800;">${title}</h3>
+        <p style="margin:7px 0 0;color:#525c5c;font-size:12px;line-height:1.45;">${description}</p>
+
+        <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:#647e68;">
+          <span>Host: ${host}</span>
+          <span>${attendees}/${maxAttendees} joined</span>
+        </div>
+
+        ${tags ? `<div style="margin-top:4px;">${tags}</div>` : ''}
+
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+          <button id="${joinButtonId}" ${joinDisabled ? 'disabled' : ''} style="flex:1;border:0;background:${joinDisabled ? '#d7ceb9' : '#7b9780'};color:white;border-radius:12px;padding:10px 10px;font-size:13px;font-weight:800;cursor:${joinDisabled ? 'not-allowed' : 'pointer'};opacity:${joinDisabled ? '0.92' : '1'};">${joinLabel}</button>
+          ${openChatHtml}
+        </div>
+        ${statusNote}
+      </div>
+    `,
+  };
+}
+
 function buildInfoCardHtml(event) {
   const title = escapeHtml(event.title || 'Campus event');
-  const category = escapeHtml(event.category || 'Community');
+  const isIcebreaker = getMarkerKind(event) === 'icebreaker';
+  const category = escapeHtml(isIcebreaker ? 'Icebreaker' : event.category || 'Community');
   const preview = escapeHtml(event.preview || event.description || 'Tap to view this event in AroundU.');
+  const footer = isIcebreaker
+    ? '<p style="margin:8px 0 0;color:#647e68;font-size:11px;font-weight:600;">Reply in Messages to start chatting.</p>'
+    : '';
 
   return `
     <div style="min-width:220px;max-width:240px;padding:6px 4px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;">
@@ -252,6 +338,7 @@ function buildInfoCardHtml(event) {
       </div>
       <h3 style="margin:0;font-size:14px;line-height:1.3;color:#1a1e1e;font-weight:700;">${title}</h3>
       <p style="margin:6px 0 0;color:#525c5c;font-size:12px;line-height:1.45;">${preview}</p>
+      ${footer}
     </div>
   `;
 }
@@ -318,9 +405,12 @@ function createUserMarkerIcon({ photoUrl, pulsePhase, isActive }) {
 
 export default function CampusMap({
   events = [],
+  currentUserId,
   userProfile,
   userPhotoUrl,
   userPosition,
+  onJoinEvent,
+  onOpenChat,
   focusEventId = null,
   onFocusHandled,
   className,
@@ -336,6 +426,7 @@ export default function CampusMap({
   const userMarkerListenersRef = useRef([]);
   const userPulseIntervalRef = useRef(null);
   const userMarkerStateRef = useRef({ active: false, pulsePhase: false });
+  const [eventJoinState, setEventJoinState] = useState({});
   const [isMapReady, setIsMapReady] = useState(false);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -390,7 +481,7 @@ export default function CampusMap({
 
     infoWindowRef.current = new window.google.maps.InfoWindow({
       disableAutoPan: false,
-      maxWidth: 260,
+      maxWidth: 360,
       pixelOffset: new window.google.maps.Size(0, -14),
     });
 
@@ -453,10 +544,83 @@ export default function CampusMap({
 
       const openInfo = () => {
         setMarkerActiveState(markerEntriesRef.current, event.id);
-        infoWindowRef.current.setContent(buildInfoCardHtml(event));
+
+        if (getMarkerKind(event) !== 'event') {
+          infoWindowRef.current.setContent(buildInfoCardHtml(event));
+          infoWindowRef.current.open({
+            map: mapRef.current,
+            anchor: marker,
+          });
+          return;
+        }
+
+        const card = buildExpandedEventCardHtml({
+          event,
+          joinState: eventJoinState[event.id],
+          currentUserId,
+        });
+
+        infoWindowRef.current.setContent(card.html);
         infoWindowRef.current.open({
           map: mapRef.current,
           anchor: marker,
+        });
+
+        window.google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+          const joinButton = document.getElementById(card.joinButtonId);
+          if (joinButton) {
+            joinButton.addEventListener('click', async () => {
+              if (typeof onJoinEvent !== 'function') {
+                return;
+              }
+
+              setEventJoinState(prev => ({
+                ...prev,
+                [event.id]: { status: 'joining', message: 'Joining event and chat...' },
+              }));
+
+              const joiningCard = buildExpandedEventCardHtml({
+                event,
+                joinState: { status: 'joining', message: 'Joining event and chat...' },
+                currentUserId,
+              });
+              infoWindowRef.current.setContent(joiningCard.html);
+
+              const result = await onJoinEvent(event);
+
+              setEventJoinState(prev => ({
+                ...prev,
+                [event.id]: result,
+              }));
+
+              const updatedCard = buildExpandedEventCardHtml({
+                event,
+                joinState: result,
+                currentUserId,
+              });
+              infoWindowRef.current.setContent(updatedCard.html);
+
+              window.google.maps.event.addListenerOnce(infoWindowRef.current, 'domready', () => {
+                const openChatButton = document.getElementById(updatedCard.openChatButtonId);
+                if (openChatButton) {
+                  openChatButton.addEventListener('click', () => {
+                    if (typeof onOpenChat === 'function') {
+                      onOpenChat();
+                    }
+                  });
+                }
+              });
+            });
+          }
+
+          const openChatButton = document.getElementById(card.openChatButtonId);
+          if (openChatButton) {
+            openChatButton.addEventListener('click', () => {
+              if (typeof onOpenChat === 'function') {
+                onOpenChat();
+              }
+            });
+          }
         });
       };
 
@@ -539,7 +703,7 @@ export default function CampusMap({
         userMarkerRef.current = null;
       }
     };
-  }, [isMapReady, markerEvents, focusEventId, onFocusHandled]);
+  }, [currentUserId, eventJoinState, focusEventId, isMapReady, markerEvents, onFocusHandled, onJoinEvent, onOpenChat]);
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current || !infoWindowRef.current) {

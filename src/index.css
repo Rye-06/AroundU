@@ -79,6 +79,10 @@
     transition-duration: 90ms;
   }
 
+  .btn-tactile-slow-press:active {
+    transition-duration: 170ms;
+  }
+
   .btn-tactile:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(124, 151, 128, 0.28);

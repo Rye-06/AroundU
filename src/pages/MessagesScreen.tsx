@@ -4,7 +4,22 @@ import { ChatListItem } from '../components/ChatListItem';
 import { ChatMessage } from '../components/ChatMessage';
 import { ConstellationBackground } from '../components/ConstellationBackground';
 
-export function MessagesScreen() {
+type EventChatThread = {
+  id: string;
+  eventId: string;
+  title: string;
+  participantIds: string[];
+};
+
+export function MessagesScreen({
+  eventChatThreads = [],
+  activeEventChatId = null,
+}: {
+  eventChatThreads?: EventChatThread[];
+  activeEventChatId?: string | null;
+}) {
+  const activeEventThread = eventChatThreads.find(thread => thread.id === activeEventChatId) ?? null;
+
   return (
     <motion.div 
       initial={{ opacity: 0, x: 20 }}
@@ -55,6 +70,23 @@ export function MessagesScreen() {
 
           <div className="mt-8">
             <h3 className="px-3 text-[11px] font-bold text-ink-400 uppercase tracking-wider mb-2">Groups</h3>
+            {eventChatThreads.map(thread => (
+              <div
+                key={thread.id}
+                className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-colors mb-1 ${
+                  thread.id === activeEventChatId ? 'bg-primary-50 border border-primary-100' : 'hover:bg-surface-100'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-primary-500">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-ink-700 block">{thread.title}</span>
+                  <span className="text-[10px] text-ink-400">{thread.participantIds.length} participants</span>
+                </div>
+              </div>
+            ))}
+
             <div className="flex items-center gap-3 p-3 hover:bg-surface-100 rounded-2xl cursor-pointer transition-colors mb-1">
               <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center text-primary-500">
                 <BookOpen className="h-5 w-5" />
@@ -103,7 +135,11 @@ export function MessagesScreen() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-ink-800">Book Club</h2>
-              <p className="text-[11px] text-ink-400">Discussing "The Midnight Library" this week</p>
+                <p className="text-[11px] text-ink-400">
+                  {activeEventThread
+                    ? `Event chat • ${activeEventThread.participantIds.length} participants`
+                    : 'Discussing "The Midnight Library" this week'}
+                </p>
             </div>
           </div>
           <div className="flex items-center gap-4 text-ink-400">

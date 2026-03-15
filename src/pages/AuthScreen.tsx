@@ -33,7 +33,7 @@ export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) =>
       mode,
       email: email.trim(),
       password,
-      name: mode === 'signup' ? name.trim() : undefined,
+      name: name.trim() || undefined,
     });
   };
 
@@ -87,24 +87,24 @@ export function AuthScreen({ onAuth }: { onAuth: (payload: AuthSubmitPayload) =>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <label className="block text-xs font-semibold text-ink-500 mb-1.5 ml-1">Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="What should we call you?"
-                  required={mode === 'signup'}
-                  className="w-full bg-surface-50 border border-surface-200 rounded-2xl px-4 py-3.5 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-300 transition-all"
-                />
-              </motion.div>
-            )}
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <label className="block text-xs font-semibold text-ink-500 mb-1.5 ml-1">
+                Name{mode === 'signin' ? ' (for matching)' : ''}
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="What should we call you?"
+                required={mode === 'signup'}
+                className="w-full bg-surface-50 border border-surface-200 rounded-2xl px-4 py-3.5 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-300 transition-all"
+              />
+            </motion.div>
 
             <div>
               <label className="block text-xs font-semibold text-ink-500 mb-1.5 ml-1">Email</label>

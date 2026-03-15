@@ -1,4 +1,5 @@
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+const DIRECT_BACKEND_FALLBACK_URL = 'http://localhost:3001';
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -11,28 +12,56 @@ async function request<T>(
   options: RequestInit = {},
   signal?: AbortSignal
 ): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method || 'GET',
-    headers: {
-      Accept: 'application/json',
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {}),
-    },
-    body: options.body,
-    signal,
-  });
+  const isAbortError = (err: unknown) =>
+    err instanceof DOMException
+    && (err.name === 'AbortError' || err.name === 'TimeoutError');
 
-  if (response.status === 204) {
-    return undefined as T;
+  const perform = async (baseUrl: string): Promise<T> => {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: options.method || 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+      body: options.body,
+      signal,
+    });
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const text = await response.text();
+    let payload: ApiEnvelope<T> = {};
+    if (text) {
+      try {
+        payload = JSON.parse(text) as ApiEnvelope<T>;
+      } catch {
+        payload = { error: text };
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(payload.error || `Request failed (${response.status})`);
+    }
+
+    return payload.data as T;
+  };
+
+  try {
+    return await perform(API_BASE_URL);
+  } catch (err) {
+    if (isAbortError(err)) {
+      throw err;
+    }
+
+    if (API_BASE_URL === '/api') {
+      return perform(DIRECT_BACKEND_FALLBACK_URL);
+    }
+
+    throw err;
   }
-
-  const payload = (await response.json()) as ApiEnvelope<T>;
-
-  if (!response.ok) {
-    throw new Error(payload.error || `Request failed (${response.status})`);
-  }
-
-  return payload.data as T;
 }
 
 function listResource<T>(resource: string, signal?: AbortSignal): Promise<T[]> {
@@ -219,6 +248,27 @@ export const createRecommendation = (body: Partial<RecommendationRecord>, signal
 export const updateRecommendation = (id: string, body: Partial<RecommendationRecord>, signal?: AbortSignal) =>
   updateResource<RecommendationRecord, Partial<RecommendationRecord>>('recommendations', id, body, signal);
 export const deleteRecommendation = (id: string, signal?: AbortSignal) => deleteResource('recommendations', id, signal);
+
+export type BuddyMatchRecord = {
+  username: string;
+  name: string;
+  avatar: string;
+  year: number | null;
+  major: string;
+  interests: string[];
+  sharedClasses: string[];
+  sharedClubs: string[];
+  groupPreference: string;
+  energyLevel: string;
+  aiReason: string;
+  rating: number;
+  isTopMatch: boolean;
+};
+
+export const getBuddyMatches = (forName = 'Jennifer', signal?: AbortSignal) =>
+  request<BuddyMatchRecord[]>(`/recommendations/buddy-matches-json?for=${encodeURIComponent(forName)}`, {}, signal).then(rows =>
+    Array.isArray(rows) ? rows : []
+  );
 
 // -------- Interests --------
 export type InterestRecord = {

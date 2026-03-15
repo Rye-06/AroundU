@@ -1,106 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Send } from 'lucide-react';
 import { ConstellationBackground } from '../components/ConstellationBackground';
+import { type BuddyMatchRecord, getBuddyMatches } from '../lib/api';
 
-const AI_MATCH_RESULT: Record<string, number> = {
-  alex_rivers: 0.95,
-  maya_patel: 0.93,
-  jordan_chen: 0.91,
-  sam_wilson: 0.9,
-  nina_lee: 0.88,
-  chris_kim: 0.84,
-};
+const MIN_VISIBLE_MATCH_SCORE = 0.65;
 
-type GroupPreference = 'solo' | 'small_group' | 'medium_group' | 'large_group';
-type EnergyLevel = 'low' | 'moderate' | 'high';
-
-type BuddyProfile = {
-  username: string;
-  name: string;
-  avatar: string;
-  year: number;
-  major: string;
-  interests: string[];
-  sharedClasses: string[];
-  sharedClubs: string[];
-  groupPreference: GroupPreference;
-  energyLevel: EnergyLevel;
-  aiReason: string;
-};
-
-type MatchEntry = BuddyProfile & {
+type MatchEntry = BuddyMatchRecord & {
   rating: number;
-  fitLabel: 'Great match' | 'Good fit';
+  fitLabel: 'Good match';
 };
-
-const BUDDY_DIRECTORY: BuddyProfile[] = [
-  {
-    username: 'alex_rivers',
-    name: 'Alex Rivers',
-    avatar: 'https://picsum.photos/seed/alexbuddy/120/120',
-    year: 1,
-    major: 'Computer Science',
-    interests: ['volleyball', 'gym', 'anime'],
-    sharedClasses: ['CSC108'],
-    sharedClubs: ['AI Club'],
-    groupPreference: 'medium_group',
-    energyLevel: 'moderate',
-    aiReason: 'You both like volleyball and gym.',
-  },
-  {
-    username: 'maya_patel',
-    name: 'Maya Patel',
-    avatar: 'https://picsum.photos/seed/mayabuddy/120/120',
-    year: 1,
-    major: 'Computer Science',
-    interests: ['coffee chats', 'anime', 'design'],
-    sharedClasses: ['MAT137'],
-    sharedClubs: ['Volleyball Club'],
-    groupPreference: 'small_group',
-    energyLevel: 'moderate',
-    aiReason: 'Similar schedules and study habits.',
-  },
-  {
-    username: 'jordan_chen',
-    name: 'Jordan Chen',
-    avatar: 'https://picsum.photos/seed/jordanbuddy/120/120',
-    year: 1,
-    major: 'Statistics',
-    interests: ['gym', 'running', 'coding'],
-    sharedClasses: ['CSC108'],
-    sharedClubs: [],
-    groupPreference: 'small_group',
-    energyLevel: 'high',
-    aiReason: 'Both first-years in STEM with active routines.',
-  },
-  {
-    username: 'sam_wilson',
-    name: 'Sam Wilson',
-    avatar: 'https://picsum.photos/seed/sambuddy/120/120',
-    year: 2,
-    major: 'Math',
-    interests: ['study groups', 'gaming', 'anime'],
-    sharedClasses: ['MAT137'],
-    sharedClubs: ['AI Club'],
-    groupPreference: 'medium_group',
-    energyLevel: 'low',
-    aiReason: 'You share overlap in anime and collaborative studying.',
-  },
-  {
-    username: 'nina_lee',
-    name: 'Nina Lee',
-    avatar: 'https://picsum.photos/seed/ninabuddy/120/120',
-    year: 1,
-    major: 'Computer Engineering',
-    interests: ['gym', 'coding', 'music'],
-    sharedClasses: [],
-    sharedClubs: ['Volleyball Club'],
-    groupPreference: 'large_group',
-    energyLevel: 'high',
-    aiReason: 'Strong overlap in campus activities and social energy.',
-  },
-];
 
 function prettyLabel(value: string) {
   return value
@@ -110,33 +19,41 @@ function prettyLabel(value: string) {
     .join(' ');
 }
 
-export function CommunitiesScreen() {
-  const rankedMatches = useMemo<MatchEntry[]>(() => {
-    // Required pipeline: threshold filter first, then descending sort, then sectioning.
-    const filteredByThreshold = Object.entries(AI_MATCH_RESULT)
-      .filter(([, rating]) => rating >= 0.86)
-      .sort((a, b) => b[1] - a[1]);
+type CommunitiesScreenProps = {
+  currentUserName?: string;
+};
 
-    const merged = filteredByThreshold
-      .map(([username, rating]) => {
-        const profile = BUDDY_DIRECTORY.find(candidate => candidate.username === username);
-        if (!profile) {
-          return null;
+export function CommunitiesScreen({ currentUserName = 'Jennifer' }: CommunitiesScreenProps) {
+  const [rawMatches, setRawMatches] = useState<BuddyMatchRecord[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    setLoadError(null);
+    getBuddyMatches(currentUserName, controller.signal)
+      .then(data => setRawMatches(data))
+      .catch(error => {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return;
         }
 
-        return {
-          ...profile,
-          rating,
-          fitLabel: rating >= 0.92 ? 'Great match' : 'Good fit',
-        } as MatchEntry;
-      })
-      .filter((match): match is MatchEntry => Boolean(match));
+        setRawMatches([]);
+        setLoadError('Could not load matches right now. Check that backend is running on port 3001.');
+      });
 
-    return merged;
-  }, []);
+    return () => controller.abort();
+  }, [currentUserName]);
 
-  const topMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.92), [rankedMatches]);
-  const goodMatches = useMemo(() => rankedMatches.filter(match => match.rating >= 0.86 && match.rating < 0.92), [rankedMatches]);
+  const rankedMatches = useMemo<MatchEntry[]>(() => {
+    return rawMatches
+      .filter(match => match.rating > MIN_VISIBLE_MATCH_SCORE)
+      .sort((a, b) => b.rating - a.rating)
+      .map(match => ({
+        ...match,
+        fitLabel: 'Good match',
+      }));
+  }, [rawMatches]);
 
   const isEmpty = rankedMatches.length === 0;
 
@@ -163,51 +80,28 @@ export function CommunitiesScreen() {
           </p>
         </section>
 
-        {isEmpty ? (
+        {loadError ? (
+          <section className="mt-8 rounded-[2rem] border border-rose-200 bg-rose-50 p-10 text-center shadow-sm">
+            <h3 className="text-xl font-semibold text-rose-800">Match service unavailable</h3>
+            <p className="mt-2 text-sm text-rose-700">{loadError}</p>
+          </section>
+        ) : isEmpty ? (
           <section className="mt-8 rounded-[2rem] border border-surface-200 bg-white p-10 text-center shadow-sm">
             <h3 className="text-xl font-semibold text-ink-800">We&apos;re finding your people.</h3>
             <p className="mt-2 text-sm text-ink-500">Try updating your interests. More matches will appear soon.</p>
           </section>
         ) : (
-          <>
-            <section className="mt-10">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-ink-900">Top Matches</h3>
-                <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Great match</p>
-              </div>
+          <section className="mt-10 pb-10">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-ink-900">Good Matches</h3>
+            </div>
 
-              {topMatches.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {topMatches.map(match => (
-                    <MatchCard key={match.username} match={match} compact={false} />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-surface-200 bg-white p-6 text-sm text-ink-500">
-                  No top matches with current filters yet.
-                </div>
-              )}
-            </section>
-
-            <section className="mt-10 pb-10">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-ink-900">Good Matches</h3>
-                <p className="text-xs font-medium uppercase tracking-wider text-ink-400">Good fit</p>
-              </div>
-
-              {goodMatches.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {goodMatches.map(match => (
-                    <MatchCard key={match.username} match={match} compact />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-surface-200 bg-white p-5 text-sm text-ink-500">
-                  No good matches with current filters right now.
-                </div>
-              )}
-            </section>
-          </>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {rankedMatches.map(match => (
+                <MatchCard key={match.username} match={match} compact />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </motion.div>

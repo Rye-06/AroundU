@@ -298,6 +298,13 @@ export default function App() {
       return;
     }
 
+    if (payload.name?.trim()) {
+      setAiProfile(prev => ({
+        ...prev,
+        name: payload.name!.trim(),
+      }));
+    }
+
     if (hasCompletedOnboarding) {
       setCurrentScreen('lounge');
       setShowMoodCheckIn(true);
@@ -493,7 +500,7 @@ export default function App() {
           {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} icebreakers={icebreakers} onDropThought={openMapIcebreakerComposer} onOpenMessages={() => setCurrentScreen('messages')} />}
           {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} onCreateIcebreaker={createIcebreaker} onJoinEventChat={handleJoinEventChat} currentUserId={sessionUserId} shouldOpenIcebreakerComposer={shouldOpenMapIcebreakerComposer} onIcebreakerComposerOpened={() => setShouldOpenMapIcebreakerComposer(false)} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
           {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
-          {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
+          {currentScreen === 'communities' && <CommunitiesScreen key="communities" currentUserName={aiProfile.name} />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" preferredEventId={selectedMessageEventId} onPreferredEventHandled={() => setSelectedMessageEventId(null)} currentUserId={sessionUserId} currentUserName={aiProfile.name} currentUserAvatar={profilePhotoUrl} />}
           {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
           {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" profile={aiProfile} onBack={() => setCurrentScreen('profile')} onSave={handleProfileSave} />}

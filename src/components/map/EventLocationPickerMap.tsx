@@ -33,19 +33,13 @@ export default function EventLocationPickerMap({
 
     mapRef.current = new window.google.maps.Map(containerRef.current, {
       center: CAMPUS_CENTER,
-      zoom: 15,
+      zoom: 12,
       mapTypeId: 'roadmap',
       clickableIcons: false,
       streetViewControl: false,
       mapTypeControl: false,
       fullscreenControl: false,
-      minZoom: 13,
-      maxZoom: 19,
       gestureHandling: 'greedy',
-      styles: [
-        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-        { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-      ],
     });
 
     const listener = mapRef.current.addListener('click', (event: google.maps.MapMouseEvent) => {

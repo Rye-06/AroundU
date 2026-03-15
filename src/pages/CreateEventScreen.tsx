@@ -17,12 +17,6 @@ type CreateEventScreenProps = {
   onEventPosted?: (payload: CreateEventSubmission & { id?: string }) => void;
 };
 
-type PresetSpot = {
-  label: string;
-  latitude: number;
-  longitude: number;
-};
-
 const EVENT_TYPE_OPTIONS = [
   'Study',
   'Social',
@@ -52,15 +46,6 @@ const INTEREST_OPTIONS = [
   'gaming',
   'networking',
   'wellness',
-];
-
-const PRESET_SPOTS: PresetSpot[] = [
-  { label: 'Bahen Centre Atrium', latitude: 43.6597, longitude: -79.3978 },
-  { label: 'Robarts Library Entrance', latitude: 43.6643, longitude: -79.3994 },
-  { label: 'Hart House Cafe', latitude: 43.6637, longitude: -79.3948 },
-  { label: 'Athletic Centre Front', latitude: 43.6672, longitude: -79.4011 },
-  { label: 'King\'s College Circle', latitude: 43.6628, longitude: -79.3956 },
-  { label: 'Sidney Smith Hall Lobby', latitude: 43.6678, longitude: -79.3991 },
 ];
 
 function isValidCoordinate(value: number, type: 'lat' | 'lng') {
@@ -103,7 +88,6 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
   const [creatorLocationStatus, setCreatorLocationStatus] = useState<'pending' | 'ready' | 'denied' | 'unavailable'>('pending');
 
   const [meetupLocation, setMeetupLocation] = useState<CoordinatePoint | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [locationSearch, setLocationSearch] = useState('');
   const [locationLabel, setLocationLabel] = useState('');
   const [searchingLocation, setSearchingLocation] = useState(false);
@@ -111,15 +95,6 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const filteredPresetSpots = useMemo(() => {
-    const query = locationSearch.trim().toLowerCase();
-    if (!query) {
-      return PRESET_SPOTS;
-    }
-
-    return PRESET_SPOTS.filter(spot => spot.label.toLowerCase().includes(query));
-  }, [locationSearch]);
 
   useEffect(() => {
     if (!('geolocation' in navigator)) {
@@ -157,17 +132,9 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
 
   const setMeetupFromCoordinate = (coordinate: CoordinatePoint, nextLabel?: string) => {
     setMeetupLocation(coordinate);
-    setSelectedPreset('');
     if (nextLabel) {
       setLocationLabel(nextLabel);
     }
-    setErrorMessage('');
-  };
-
-  const selectPreset = (spot: PresetSpot) => {
-    setSelectedPreset(spot.label);
-    setMeetupLocation({ latitude: spot.latitude, longitude: spot.longitude });
-    setLocationLabel(spot.label);
     setErrorMessage('');
   };
 
@@ -177,16 +144,10 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
       return;
     }
 
-    const directPreset = PRESET_SPOTS.find(spot => spot.label.toLowerCase() === query.toLowerCase());
-    if (directPreset) {
-      selectPreset(directPreset);
-      return;
-    }
-
     const googleMaps = (window as Window & { google?: any }).google;
 
     if (!googleMaps?.maps?.Geocoder) {
-      setErrorMessage('Place search is unavailable right now. Try selecting a preset spot or clicking the map.');
+      setErrorMessage('Place search is unavailable right now. Try selecting directly on the map.');
       return;
     }
 
@@ -195,11 +156,11 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
 
     try {
       const geocoder = new googleMaps.maps.Geocoder();
-      const result = await geocoder.geocode({ address: `${query}, University of Toronto, Toronto` });
+      const result = await geocoder.geocode({ address: query });
       const first = result.results?.[0];
 
       if (!first?.geometry?.location) {
-        setErrorMessage('No matching campus location found. Try a different search or click the map.');
+        setErrorMessage('No matching location found. Try a different search or click the map.');
         return;
       }
 
@@ -211,7 +172,7 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
         first.formatted_address,
       );
     } catch {
-      setErrorMessage('Could not search this place right now. Try selecting on the map.');
+      setErrorMessage('Could not search this location right now. Try selecting on the map.');
     } finally {
       setSearchingLocation(false);
     }
@@ -247,7 +208,6 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
     setStartsInMinutes(30);
     setMaxParticipants(6);
     setMeetupLocation(null);
-    setSelectedPreset('');
     setLocationSearch('');
     setLocationLabel('');
   };
@@ -468,7 +428,7 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
             </FieldGroup>
           </div>
 
-          <FieldGroup label="Meetup location" required hint="Choose via map click, place search, or campus presets.">
+          <FieldGroup label="Meetup location" required hint="Search any place on Google Maps or click directly on the map.">
             <div className="space-y-4 rounded-2xl border border-surface-200 bg-white p-4">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1">
@@ -483,7 +443,7 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
                         void handleSearchLocation();
                       }
                     }}
-                    placeholder="Search a place on campus"
+                    placeholder="Search any address or place"
                     className="w-full rounded-xl border border-surface-200 bg-surface-50 py-2.5 pl-9 pr-3 text-sm text-ink-700 transition-all focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
                   />
                 </div>
@@ -495,27 +455,6 @@ export function CreateEventScreen({ hostUserId, onEventPosted }: CreateEventScre
                 >
                   {searchingLocation ? 'Searching...' : 'Find'}
                 </button>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Preset campus spots</p>
-                <div className="flex flex-wrap gap-2">
-                  {filteredPresetSpots.map(spot => (
-                    <button
-                      key={spot.label}
-                      type="button"
-                      onClick={() => selectPreset(spot)}
-                      className={cn(
-                        'btn-tactile btn-tactile-soft rounded-full border px-3 py-1.5 text-xs font-medium',
-                        selectedPreset === spot.label
-                          ? 'border-primary-300 bg-primary-50 text-primary-700'
-                          : 'border-surface-200 bg-surface-50 text-ink-600 hover:border-primary-200',
-                      )}
-                    >
-                      {spot.label}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <EventLocationPickerMap

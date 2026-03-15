@@ -38,5 +38,45 @@
       },
       "interests": ["gym", "startups", "anime"]
     }
+  },
+  {
+    "name": "Jennifer",
+    "user_profile": {
+      "year_of_study": 2,
+      "major": "Computer Science",
+      "age": 18,
+      "gender": "female",
+      "mbti": "ENTP",
+      "mood": "sleepy",
+      "fitness": "low",
+      "class": ["CSC207", "MAT137"],
+      "club": ["UTMIST Club"],
+      "personality": {
+        "extroversion": 2,
+        "group_preference": "medium_group",
+        "energy_level": "low"
+      },
+      "interests": ["gym", "movies"]
+    }
+  },
+  {
+    "name": "Daniel",
+    "user_profile": {
+      "year_of_study": 4,
+      "major": "Fine Arts",
+      "age": 25,
+      "gender": "male",
+      "mbti": "ISFJ",
+      "mood": "energetic",
+      "fitness": "high",
+      "class": ["ART401", "PHI302"],
+      "club": ["Outdoor Adventure Club"],
+      "personality": {
+        "extroversion": 9,
+        "group_preference": "large_group",
+        "energy_level": "high"
+      },
+      "interests": ["painting", "hiking"]
+    }
   }
 ]

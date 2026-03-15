@@ -26,37 +26,13 @@ async function request<T>(
     return undefined as T;
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  const rawBody = await response.text();
-
-  let payload: ApiEnvelope<T> | undefined;
-  let parsedBody: unknown;
-
-  if (rawBody.trim()) {
-    try {
-      parsedBody = JSON.parse(rawBody);
-      if (contentType.includes('application/json') && parsedBody && typeof parsedBody === 'object') {
-        payload = parsedBody as ApiEnvelope<T>;
-      }
-    } catch {
-      parsedBody = undefined;
-    }
-  }
+  const payload = (await response.json()) as ApiEnvelope<T>;
 
   if (!response.ok) {
-    const errorMessage =
-      payload?.error ||
-      payload?.message ||
-      (typeof rawBody === 'string' && rawBody.trim() ? rawBody.trim() : undefined) ||
-      `Request failed (${response.status})`;
-    throw new Error(errorMessage);
+    throw new Error(payload.error || `Request failed (${response.status})`);
   }
 
-  if (payload && Object.prototype.hasOwnProperty.call(payload, 'data')) {
-    return payload.data as T;
-  }
-
-  return parsedBody as T;
+  return payload.data as T;
 }
 
 function listResource<T>(resource: string, signal?: AbortSignal): Promise<T[]> {
@@ -122,6 +98,40 @@ export type ApiEventRecord = {
 
 export type CreateEventBody = Omit<ApiEventRecord, 'id' | 'created_at'>;
 export type UpdateEventBody = Partial<CreateEventBody>;
+
+export type CoordinatePoint = {
+  latitude: number;
+  longitude: number;
+};
+
+export type CreateEventSubmission = {
+  host_user_id: string;
+  title: string;
+  description: string;
+  event_type: string;
+  interest_tag: string[];
+  skill_level_required: string;
+  latitude: number;
+  longitude: number;
+  event_time: string;
+  max_participants: number;
+  creator_location: CoordinatePoint | null;
+};
+
+export function toCreateEventBody(payload: CreateEventSubmission): CreateEventBody {
+  return {
+    host_user_id: payload.host_user_id,
+    title: payload.title,
+    description: payload.description,
+    event_type: payload.event_type,
+    interest_tag: payload.interest_tag,
+    skill_level_required: payload.skill_level_required,
+    latitude: payload.latitude,
+    longitude: payload.longitude,
+    event_time: payload.event_time,
+    max_participants: payload.max_participants,
+  };
+}
 
 export const getEvents = (signal?: AbortSignal) => listResource<ApiEventRecord>('events', signal);
 export const getEventById = (id: string, signal?: AbortSignal) => getResourceById<ApiEventRecord>('events', id, signal);

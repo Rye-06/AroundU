@@ -6,6 +6,9 @@ const DEFAULT_ZOOM = 15;
 const MARKER_STATE_IDLE = 'idle';
 const MARKER_STATE_HOVER = 'hover';
 const MARKER_STATE_ACTIVE = 'active';
+const USER_MARKER_IDLE_Z = 4600;
+const USER_MARKER_ACTIVE_Z = 6000;
+const DEFAULT_USER_PHOTO = 'https://picsum.photos/seed/aroundu-user/160/160';
 
 const ACTIVITY_TOKEN = {
   quiet: { core: 16, glow: 0.44, ring: 0.32 },
@@ -39,6 +42,14 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function escapeAttr(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function toCoordinate(event, index) {
@@ -245,8 +256,71 @@ function buildInfoCardHtml(event) {
   `;
 }
 
+function buildUserInfoCardHtml({ name, mood, photoUrl }) {
+  const safeName = escapeHtml(name || 'You');
+  const safeMood = escapeHtml(mood || 'not set');
+  const safePhoto = escapeAttr(photoUrl || DEFAULT_USER_PHOTO);
+
+  return `
+    <div style="min-width:210px;max-width:235px;padding:6px 4px;font-family:Inter,ui-sans-serif,system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="${safePhoto}" alt="${safeName}" style="width:44px;height:44px;border-radius:999px;object-fit:cover;border:2px solid #fefcf3;box-shadow:0 6px 14px rgba(80,92,76,0.18);" referrerpolicy="no-referrer" />
+        <div>
+          <p style="margin:0;font-size:14px;line-height:1.2;color:#1a1e1e;font-weight:700;">${safeName}</p>
+          <p style="margin:2px 0 0;font-size:11px;color:#647e68;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">You</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#525c5c;">Mood: ${safeMood}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildUserMarkerSvg({ photoUrl, pulsePhase, isActive }) {
+  const glowOpacity = isActive ? 0.6 : pulsePhase ? 0.5 : 0.42;
+  const outerRadius = isActive ? 33 : pulsePhase ? 31.5 : 30;
+  const ringStroke = isActive ? 4.2 : 3.7;
+  const innerRingStroke = isActive ? 2.6 : 2.2;
+  const safePhotoUrl = escapeAttr(photoUrl || DEFAULT_USER_PHOTO);
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+      <defs>
+        <radialGradient id="userAura" cx="50%" cy="50%" r="52%">
+          <stop offset="0%" stop-color="#b7d5c0" stop-opacity="${glowOpacity}" />
+          <stop offset="100%" stop-color="#b7d5c0" stop-opacity="0" />
+        </radialGradient>
+        <clipPath id="userClip">
+          <circle cx="48" cy="48" r="18.5" />
+        </clipPath>
+      </defs>
+
+      <circle cx="48" cy="48" r="${outerRadius}" fill="url(#userAura)" />
+      <circle cx="48" cy="48" r="25.5" fill="none" stroke="#7b9780" stroke-opacity="0.48" stroke-width="${ringStroke}" />
+      <circle cx="48" cy="48" r="22.6" fill="none" stroke="#fefcf3" stroke-opacity="0.95" stroke-width="${innerRingStroke}" />
+
+      <circle cx="48" cy="48" r="19.2" fill="#f3eee3" />
+      <image href="${safePhotoUrl}" x="29.5" y="29.5" width="37" height="37" clip-path="url(#userClip)" preserveAspectRatio="xMidYMid slice" />
+      <circle cx="48" cy="48" r="19.2" fill="none" stroke="rgba(26,30,30,0.08)" stroke-width="0.9" />
+    </svg>
+  `;
+}
+
+function createUserMarkerIcon({ photoUrl, pulsePhase, isActive }) {
+  const size = isActive ? 86 : pulsePhase ? 84 : 82;
+  const svg = buildUserMarkerSvg({ photoUrl, pulsePhase, isActive });
+
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new window.google.maps.Size(size, size),
+    anchor: new window.google.maps.Point(size / 2, size / 2),
+  };
+}
+
 export default function CampusMap({
   events = [],
+  userProfile,
+  userPhotoUrl,
+  userPosition,
   focusEventId = null,
   onFocusHandled,
   className,
@@ -258,6 +332,10 @@ export default function CampusMap({
   const listenerEntriesRef = useRef([]);
   const mapClickListenerRef = useRef(null);
   const pulseIntervalsRef = useRef([]);
+  const userMarkerRef = useRef(null);
+  const userMarkerListenersRef = useRef([]);
+  const userPulseIntervalRef = useRef(null);
+  const userMarkerStateRef = useRef({ active: false, pulsePhase: false });
   const [isMapReady, setIsMapReady] = useState(false);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -270,6 +348,21 @@ export default function CampusMap({
       preview: event.preview || event.description?.slice(0, 96),
     }));
   }, [events]);
+
+  const resolvedUserPosition = useMemo(() => {
+    if (typeof userPosition?.lat === 'number' && typeof userPosition?.lng === 'number') {
+      return userPosition;
+    }
+
+    return {
+      lat: CAMPUS_CENTER.lat + 0.0002,
+      lng: CAMPUS_CENTER.lng - 0.0003,
+    };
+  }, [userPosition]);
+
+  const userDisplayName = userProfile?.name || 'You';
+  const userMood = userProfile?.user_profile?.mood || 'focused';
+  const resolvedUserPhoto = userPhotoUrl || DEFAULT_USER_PHOTO;
 
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current || mapRef.current) {
@@ -430,8 +523,121 @@ export default function CampusMap({
         }
       });
       markerEntriesRef.current = [];
+
+      userMarkerListenersRef.current.forEach((listener) => listener.remove());
+      userMarkerListenersRef.current = [];
+      if (userPulseIntervalRef.current) {
+        window.clearInterval(userPulseIntervalRef.current);
+        userPulseIntervalRef.current = null;
+      }
+      if (userMarkerRef.current) {
+        if (typeof userMarkerRef.current.setMap === 'function') {
+          userMarkerRef.current.setMap(null);
+        } else {
+          userMarkerRef.current.map = null;
+        }
+        userMarkerRef.current = null;
+      }
     };
   }, [isMapReady, markerEvents, focusEventId, onFocusHandled]);
+
+  useEffect(() => {
+    if (!isMapReady || !mapRef.current || !infoWindowRef.current) {
+      return;
+    }
+
+    const applyUserVisual = () => {
+      if (!userMarkerRef.current) {
+        return;
+      }
+
+      userMarkerRef.current.setIcon(
+        createUserMarkerIcon({
+          photoUrl: resolvedUserPhoto,
+          pulsePhase: userMarkerStateRef.current.pulsePhase,
+          isActive: userMarkerStateRef.current.active,
+        }),
+      );
+      userMarkerRef.current.setZIndex(userMarkerStateRef.current.active ? USER_MARKER_ACTIVE_Z : USER_MARKER_IDLE_Z);
+    };
+
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = new window.google.maps.Marker({
+        position: resolvedUserPosition,
+        title: 'You are here',
+        map: mapRef.current,
+        clickable: true,
+      });
+
+      applyUserVisual();
+
+      const openUserInfo = () => {
+        userMarkerStateRef.current.active = true;
+        applyUserVisual();
+
+        infoWindowRef.current.setContent(
+          buildUserInfoCardHtml({
+            name: userDisplayName,
+            mood: userMood,
+            photoUrl: resolvedUserPhoto,
+          }),
+        );
+
+        infoWindowRef.current.open({
+          map: mapRef.current,
+          anchor: userMarkerRef.current,
+        });
+
+        setMarkerActiveState(markerEntriesRef.current, null);
+      };
+
+      const markerClickListener = userMarkerRef.current.addListener('click', openUserInfo);
+      const markerHoverInListener = userMarkerRef.current.addListener('mouseover', () => {
+        userMarkerStateRef.current.active = true;
+        applyUserVisual();
+      });
+      const markerHoverOutListener = userMarkerRef.current.addListener('mouseout', () => {
+        userMarkerStateRef.current.active = false;
+        applyUserVisual();
+      });
+
+      userMarkerListenersRef.current.push(markerClickListener, markerHoverInListener, markerHoverOutListener);
+    }
+
+    userMarkerRef.current.setPosition(resolvedUserPosition);
+    applyUserVisual();
+
+    if (userPulseIntervalRef.current) {
+      window.clearInterval(userPulseIntervalRef.current);
+      userPulseIntervalRef.current = null;
+    }
+
+    userPulseIntervalRef.current = window.setInterval(() => {
+      userMarkerStateRef.current.pulsePhase = !userMarkerStateRef.current.pulsePhase;
+      if (!userMarkerStateRef.current.active) {
+        applyUserVisual();
+      }
+    }, 2200);
+
+    const closeListener = infoWindowRef.current.addListener('closeclick', () => {
+      userMarkerStateRef.current.active = false;
+      applyUserVisual();
+    });
+
+    const mapClickResetListener = mapRef.current.addListener('click', () => {
+      userMarkerStateRef.current.active = false;
+      applyUserVisual();
+    });
+
+    return () => {
+      closeListener.remove();
+      mapClickResetListener.remove();
+      if (userPulseIntervalRef.current) {
+        window.clearInterval(userPulseIntervalRef.current);
+        userPulseIntervalRef.current = null;
+      }
+    };
+  }, [isMapReady, resolvedUserPosition, resolvedUserPhoto, userDisplayName, userMood]);
 
   if (!apiKey) {
     return (

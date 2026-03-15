@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './lib/utils';
-import { AuthScreen } from './pages/AuthScreen';
-import { OnboardingScreen, type OnboardingData } from './pages/OnboardingScreen';
+import { AuthScreen, type AuthSubmitPayload } from './pages/AuthScreen';
+import { OnboardingScreen, type OnboardingPayload } from './pages/OnboardingScreen';
 import { LoungeScreen } from './pages/LoungeScreen';
 import { MapScreen } from './pages/MapScreen';
 import { CreateEventScreen } from './pages/CreateEventScreen';
@@ -27,7 +27,9 @@ import { EventNotificationStack, type EventToast } from './components/EventNotif
 import { AroundUEmblem, AroundULogo } from './components/AroundULogo';
 import { SplashScreen } from './components/SplashScreen';
 import { ConstellationBackground } from './components/ConstellationBackground';
-import { createEvent, createUserAggregate, type CreateUserAggregateResponse as User } from './lib/api';
+import { MoodCheckInModal } from './components/MoodCheckInModal';
+import { DEFAULT_AI_PROFILE, type AroundUAIProfile, type MoodOption } from './lib/profile';
+import { createUserAggregate, type CreateEventSubmission } from './lib/api';
 
 type AppMapEvent = {
   id: string;
@@ -50,15 +52,24 @@ type AppMapEvent = {
 };
 
 type PostedEventPayload = {
+  host_user_id: string;
   title: string;
-  subtitle: string;
   description: string;
-  location?: string;
-  interestTag?: string;
-  category: string;
+  event_type: string;
+  interest_tag: string[];
+  skill_level_required: string;
+  latitude: number;
+  longitude: number;
+  event_time: string;
+  max_participants: number;
+  creator_location: {
+    latitude: number;
+    longitude: number;
+  } | null;
 };
 
 type Screen = 'auth' | 'onboarding' | 'lounge' | 'map' | 'communities' | 'messages' | 'create' | 'profile' | 'editProfile';
+const USER_ID_STORAGE_KEY = 'aroundu.user.id';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
@@ -66,16 +77,28 @@ export default function App() {
   const [eventNotifications, setEventNotifications] = useState<EventToast[]>([]);
   const [userMapEvents, setUserMapEvents] = useState<AppMapEvent[]>([]);
   const [mapFocusEventId, setMapFocusEventId] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [authName, setAuthName] = useState<string>('');
+  const [aiProfile, setAiProfile] = useState<AroundUAIProfile>(DEFAULT_AI_PROFILE);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const profilePhotoUrl = `https://picsum.photos/seed/${encodeURIComponent(aiProfile.name || 'aroundu-user')}/160/160`;
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 1700);
     return () => window.clearTimeout(splashTimer);
   }, []);
 
+  useEffect(() => {
+    const storedUserId = window.localStorage.getItem(USER_ID_STORAGE_KEY);
+    if (storedUserId) {
+      setSessionUserId(storedUserId);
+    }
+  }, []);
+
   const buildMapEventFromPost = (post: PostedEventPayload): AppMapEvent => {
-    const categoryLabel = post.category.charAt(0).toUpperCase() + post.category.slice(1);
+    const eventType = post.event_type.toLowerCase();
+    const categoryLabel = post.event_type.charAt(0).toUpperCase() + post.event_type.slice(1);
 
     const iconByCategory = {
       study: BookOpen,
@@ -104,9 +127,9 @@ export default function App() {
       other: 'medium',
     } as const;
 
-    const icon = iconByCategory[post.category as keyof typeof iconByCategory] ?? Zap;
-    const activityLevel = activityByCategory[post.category as keyof typeof activityByCategory] ?? 'moderate';
-    const groupSize = groupSizeByCategory[post.category as keyof typeof groupSizeByCategory] ?? 'medium';
+    const icon = iconByCategory[eventType as keyof typeof iconByCategory] ?? Zap;
+    const activityLevel = activityByCategory[eventType as keyof typeof activityByCategory] ?? 'moderate';
+    const groupSize = groupSizeByCategory[eventType as keyof typeof groupSizeByCategory] ?? 'medium';
 
     const spreadIndex = userMapEvents.length;
     const top = 30 + ((spreadIndex * 13) % 40);
@@ -119,19 +142,19 @@ export default function App() {
       id: nextId,
       title: post.title,
       description: post.description,
-      location: post.location ?? 'Campus location',
+      location: `${post.latitude.toFixed(5)}, ${post.longitude.toFixed(5)}`,
       category: categoryLabel,
-      host: 'Alex Rivers',
+      host: aiProfile.name,
       attendees: 1,
-      maxAttendees: 8,
-      timeLeft: 'Starts now',
+      maxAttendees: post.max_participants,
+      timeLeft: post.event_time,
       photo: `https://picsum.photos/seed/${nextId}/600/400`,
-      tags: [post.interestTag ?? categoryLabel],
+      tags: post.interest_tag.length > 0 ? post.interest_tag : [categoryLabel],
       icon,
       top: `${top}%`,
       left: `${left}%`,
       activityLevel,
-      activityType: post.category,
+      activityType: post.event_type,
       groupSize,
     };
   };
@@ -142,9 +165,9 @@ export default function App() {
     const notification: EventToast = {
       id: mapEvent.id,
       title: post.title,
-      subtitle: post.subtitle,
-      location: post.location,
-      interestTag: post.interestTag,
+      subtitle: post.description.slice(0, 80),
+      location: `${post.latitude.toFixed(5)}, ${post.longitude.toFixed(5)}`,
+      interestTag: post.interest_tag[0],
       ctaLabel: 'View',
       durationMs: 5000,
     };
@@ -163,50 +186,118 @@ export default function App() {
     dismissNotification(id);
   };
 
+  const handleAuth = (payload: AuthSubmitPayload) => {
+    setAuthMode(payload.mode);
+
+    if (payload.mode === 'signup') {
+      setAiProfile(prev => ({
+        ...prev,
+        name: payload.name ?? prev.name,
+      }));
+
+      // New account flow should create and persist a fresh user id after onboarding.
+      setSessionUserId(null);
+      window.localStorage.removeItem(USER_ID_STORAGE_KEY);
+      setHasCompletedOnboarding(false);
+      setShowMoodCheckIn(false);
+      setCurrentScreen('onboarding');
+      return;
+    }
+
+    if (hasCompletedOnboarding) {
+      setCurrentScreen('lounge');
+      setShowMoodCheckIn(true);
+      return;
+    }
+
+    setCurrentScreen('onboarding');
+  };
+
+  const handleOnboardingComplete = async (payload: OnboardingPayload) => {
+    const nextProfile = {
+      ...aiProfile,
+      user_profile: {
+        ...aiProfile.user_profile,
+        ...payload,
+        personality: {
+          ...aiProfile.user_profile.personality,
+          ...payload.personality,
+        },
+      },
+    };
+
+    setAiProfile(prev => ({
+      ...prev,
+      user_profile: {
+        ...prev.user_profile,
+        ...payload,
+        personality: {
+          ...prev.user_profile.personality,
+          ...payload.personality,
+        },
+      },
+    }));
+
+    if (authMode === 'signup') {
+      try {
+        const created = await createUserAggregate({
+          name: nextProfile.name,
+          profile: {
+            year_of_study: nextProfile.user_profile.year_of_study,
+            major: nextProfile.user_profile.major,
+            mbti: nextProfile.user_profile.mbti,
+            mood: nextProfile.user_profile.mood,
+            fitness: nextProfile.user_profile.fitness,
+            extroversion: nextProfile.user_profile.personality.extroversion,
+            group_preference: nextProfile.user_profile.personality.group_preference,
+            energy_level: nextProfile.user_profile.personality.energy_level,
+          },
+          classes: nextProfile.user_profile.class,
+          clubs: nextProfile.user_profile.club,
+          interests: nextProfile.user_profile.interests,
+        });
+
+        if (created?.id) {
+          setSessionUserId(created.id);
+          window.localStorage.setItem(USER_ID_STORAGE_KEY, created.id);
+        }
+      } catch (error) {
+        console.error('Failed to store new user profile:', error);
+      }
+    }
+
+    setHasCompletedOnboarding(true);
+    setCurrentScreen('lounge');
+    setShowMoodCheckIn(true);
+  };
+
+  const handleMoodSelect = (mood: MoodOption) => {
+    setAiProfile(prev => ({
+      ...prev,
+      user_profile: {
+        ...prev.user_profile,
+        mood,
+      },
+    }));
+    setShowMoodCheckIn(false);
+  };
+
+  const handleProfileSave = (profile: AroundUAIProfile) => {
+    setAiProfile(profile);
+    setCurrentScreen('profile');
+  };
+
   if (showSplash) {
     return <SplashScreen />;
   }
 
   // Full-screen flows (no sidebar)
   if (currentScreen === 'auth') {
-    return <AuthScreen onAuth={(name) => {
-      setAuthName(name);
-      setCurrentScreen('onboarding');
-    }} />;
+    return <AuthScreen onAuth={handleAuth} />;
   }
 
   if (currentScreen === 'onboarding') {
-    return <OnboardingScreen onComplete={async (onboardingData: OnboardingData) => {
-      const payload = {
-        name: authName || 'Student',
-        bio: `Hi! I'm interested in ${onboardingData.interests[0]} and meeting new people.`,
-        profile: {
-          year_of_study: 1,
-          major: 'Undeclared',
-          mbti: 'UNKNOWN',
-          mood: 'good',
-          fitness: 'active',
-          extroversion: onboardingData.comfort.includes('small') ? 2 : 4,
-          group_preference: onboardingData.comfort[0] || 'medium',
-          energy_level: 'moderate'
-        },
-        classes: [],
-        clubs: [],
-        interests: onboardingData.interests
-      };
-      //Trying my best here to stay sane
-      // Creates the user, passed as a function we created into onboarding screen
-
-      try {
-        const createdUser = await createUserAggregate(payload);
-        console.log('User created successfully:', createdUser);
-        setUser(createdUser);
-      } catch (err) {
-        console.error('Network error during user creation:', err);
-      }
-
-      setCurrentScreen('lounge');
-    }} />;
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
   return (
@@ -262,13 +353,13 @@ export default function App() {
               className="flex items-center space-x-3 p-2 w-full rounded-2xl hover:bg-surface-100 transition-colors cursor-pointer"
             >
               <img 
-                src="https://picsum.photos/seed/alex/100/100" 
-                alt="Alex Rivers" 
+                src={profilePhotoUrl}
+                alt={aiProfile.name} 
                 className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
                 referrerPolicy="no-referrer"
               />
               <div className="hidden md:block text-left">
-                <p className="text-sm font-semibold text-ink-800">Alex Rivers</p>
+                <p className="text-sm font-semibold text-ink-800">{aiProfile.name}</p>
                 <p className="text-xs text-ink-500 font-medium">Online now</p>
               </div>
             </button>
@@ -282,18 +373,24 @@ export default function App() {
 
         <AnimatePresence mode="wait">
           {currentScreen === 'lounge' && <LoungeScreen key="lounge" onCreateEvent={() => setCurrentScreen('create')} />}
-          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
-          {currentScreen === 'create' && <CreateEventScreen key="create" onEventPosted={handleEventPosted} />}
+          {currentScreen === 'map' && <MapScreen key="map" onBack={() => setCurrentScreen('lounge')} onCreateEvent={() => setCurrentScreen('create')} onGoToMessages={() => setCurrentScreen('messages')} profile={aiProfile} profilePhotoUrl={profilePhotoUrl} userEvents={userMapEvents} initialFocusEventId={mapFocusEventId} onFocusHandled={() => setMapFocusEventId(null)} />}
+          {currentScreen === 'create' && <CreateEventScreen key="create" hostUserId={sessionUserId ?? ''} onEventPosted={(payload: CreateEventSubmission) => handleEventPosted(payload)} />}
           {currentScreen === 'communities' && <CommunitiesScreen key="communities" />}
           {currentScreen === 'messages' && <MessagesScreen key="messages" />}
-          {currentScreen === 'profile' && <ProfileScreen key="profile" onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
-          {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" onBack={() => setCurrentScreen('profile')} />}
+          {currentScreen === 'profile' && <ProfileScreen key="profile" profile={aiProfile} onEdit={() => setCurrentScreen('editProfile')} onBack={() => setCurrentScreen('lounge')} />}
+          {currentScreen === 'editProfile' && <EditProfileScreen key="editProfile" profile={aiProfile} onBack={() => setCurrentScreen('profile')} onSave={handleProfileSave} />}
         </AnimatePresence>
 
         <EventNotificationStack
           notifications={eventNotifications}
           onDismiss={dismissNotification}
           onOpen={openNotification}
+        />
+
+        <MoodCheckInModal
+          open={showMoodCheckIn}
+          onSkip={() => setShowMoodCheckIn(false)}
+          onSelectMood={handleMoodSelect}
         />
       </main>
     </div>

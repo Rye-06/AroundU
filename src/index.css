@@ -59,6 +59,53 @@
   .organic-blur {
     @apply absolute rounded-full mix-blend-multiply filter blur-[80px] opacity-40 animate-blob pointer-events-none;
   }
+
+  .btn-tactile {
+    transform: translateY(0) scale(1);
+    transition-property: transform, box-shadow, filter, background-color, border-color, color;
+    transition-duration: 170ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, box-shadow;
+  }
+
+  .btn-tactile:hover {
+    transform: translateY(-1px) scale(1.01);
+    filter: brightness(1.015);
+  }
+
+  .btn-tactile:active {
+    transform: translateY(1.5px) scale(0.985);
+    filter: brightness(0.985);
+    transition-duration: 90ms;
+  }
+
+  .btn-tactile:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124, 151, 128, 0.28);
+  }
+
+  .btn-tactile:disabled {
+    transform: none;
+    filter: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .btn-tactile-soft:hover {
+    box-shadow: 0 7px 18px rgba(75, 103, 82, 0.12);
+  }
+
+  .btn-tactile-soft:active {
+    box-shadow: 0 2px 8px rgba(75, 103, 82, 0.08);
+  }
+
+  .btn-tactile-solid:hover {
+    box-shadow: 0 10px 24px rgba(100, 126, 104, 0.26);
+  }
+
+  .btn-tactile-solid:active {
+    box-shadow: 0 4px 10px rgba(100, 126, 104, 0.22);
+  }
 }
 
 @keyframes ripple {
